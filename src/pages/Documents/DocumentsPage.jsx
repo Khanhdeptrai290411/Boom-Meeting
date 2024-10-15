@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import LeftSideBar from './LeftSideBarD';
 import MainDocuments from './MainDocuments';
 
-function DocumentsPage({ toggleMenuSidebar, isDarkMode, toggleDarkMode, selectedChat, setSelectedChat }) {
+function DocumentsPage({ toggleMenuSidebar, isDarkMode, toggleDarkMode,  }) {
+  const [activeTab, setActiveTab] = useState('notification');
   return (
     <>
       {/* Left Sidebar */}
@@ -11,10 +12,12 @@ function DocumentsPage({ toggleMenuSidebar, isDarkMode, toggleDarkMode, selected
         isDarkMode={isDarkMode}
         toggleDarkMode={toggleDarkMode}
         title="Documents"
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
       />
 
       {/* Main Documents Area */}
-      <MainDocuments selectedChat={selectedChat} />
+      <MainDocuments activeTab={activeTab} />
     </>
   );
 }

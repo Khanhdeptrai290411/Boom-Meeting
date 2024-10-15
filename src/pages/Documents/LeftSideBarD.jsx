@@ -9,7 +9,13 @@ import {
   Clock 
 } from 'lucide-react';
 
-function LeftSideBar({ toggleMenuSidebar, title = "Documents", isDarkMode, toggleDarkMode, userName = "User Name" }) {
+function LeftSideBar({ toggleMenuSidebar, title = "Documents", isDarkMode, toggleDarkMode, userName = "User Name",setActiveTab,activeTab  }) {
+  const getTabClass = (tab) =>
+    `flex items-center space-x-3 p-2 rounded-lg cursor-pointer transition-all ${
+      activeTab === tab 
+        ? 'bg-gray-100 dark:bg-gray-800'  // Màu nền khi được chọn
+        : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+    }`;
   return (
     <div className="w-1/3 max-w-xs border-r border-gray-300 dark:border-gray-700 flex flex-col bg-white dark:bg-gray-900 transition-colors h-full">
       {/* Header Section */}
@@ -38,25 +44,33 @@ function LeftSideBar({ toggleMenuSidebar, title = "Documents", isDarkMode, toggl
       {/* Navigation Items */}
       <div className="flex-1 p-4 space-y-4">
         {/* Thông báo */}
-        <div className="flex items-center space-x-3 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg cursor-pointer transition-all">
+        <div className={getTabClass('notification')} 
+          onClick={() => setActiveTab('notification')}
+          >
           <Bell className="w-5 h-5 text-gray-600 dark:text-gray-400" />
           <span className="text-gray-800 dark:text-gray-200">Thông báo</span>
         </div>
 
         {/* Gần đây */}
-        <div className="flex items-center space-x-3 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg cursor-pointer transition-all">
+        <div className={getTabClass('recent')}
+          onClick={() => setActiveTab('recent')}
+        >
           <Clock className="w-5 h-5 text-gray-600 dark:text-gray-400" />
           <span className="text-gray-800 dark:text-gray-200">Gần đây</span>
         </div>
 
         {/* My Docs */}
-        <div className="flex items-center space-x-3 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg cursor-pointer transition-all">
+        <div className={getTabClass('myDocs')}
+          onClick={() => setActiveTab('myDocs')}
+        >
           <FileText className="w-5 h-5 text-gray-600 dark:text-gray-400" />
           <span className="text-gray-800 dark:text-gray-200">My Docs</span>
         </div>
 
         {/* Được chia sẻ chung */}
-        <div className="flex items-center space-x-3 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg cursor-pointer transition-all">
+        <div className={getTabClass('shared')}
+          onClick={() => setActiveTab('shared')}
+        >
           <Share className="w-5 h-5 text-gray-600 dark:text-gray-400" />
           <span className="text-gray-800 dark:text-gray-200">Được chia sẻ chung</span>
         </div>

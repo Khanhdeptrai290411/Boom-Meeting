@@ -5,8 +5,10 @@ let mainWindow;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1384,      // Chiều rộng mặc định
-    height: 768,      // Chiều cao mặc định
+    width: 1210,      // Chiều rộng mặc định
+    height:698,      // Chiều cao mặc định
+    minWidth: Math.floor(1210 / 2.3),  // Giới hạn chiều rộng tối thiểu
+    minHeight: Math.floor(698 / 2.3),  // Giới hạn chiều cao tối thiểu
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,

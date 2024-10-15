@@ -15,15 +15,14 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import NavBar from './NavigationBar';
-import ChatLayout from './pages/Chat/ChatLayout';
-
+import ChatLayout from './Chat/ChatLayout';
 import { HashRouter as Router, Routes, Route } from 'react-router-dom'; // Use HashRouter for Electron
 import {user,messages} from './Mockdata';
-import MeetingPage from './pages/Meeting/MeetingPage';
+import MeetingPage from './Meeting/MeetingPage';
 import ReactLogo from './assets/ok.jpg'; // Đảm bảo đường dẫn chính xác
-import DocumentsPage from './pages/Documents/DocumentsPage';
+import DocumentsPage from './Documents/DocumentsPage';
 
-export default function MessengerInterface() {
+export default function BoomChat() {
   const [chats, setChats] = useState([
     { id: 1, name: 'Kailey', lastMessage: 'Say My Name', time: '9:36', unread: false,status:'0' },
     { id: 2, name: 'Maryjane', lastMessage: 'Check On It', time: '12:02', unread: true,status:'1' },
