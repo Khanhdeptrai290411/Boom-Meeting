@@ -15,12 +15,12 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import NavBar from './NavigationBar';
-import ChatLayout from './Chat/ChatLayout';
+import ChatLayout from './pages/Chat/ChatLayout';
 import { HashRouter as Router, Routes, Route } from 'react-router-dom'; // Use HashRouter for Electron
 import {user,messages} from './Mockdata';
-import MeetingPage from './Meeting/MeetingPage';
+import MeetingPage from './pages/Meeting/MeetingPage';
 import ReactLogo from './assets/ok.jpg'; // Đảm bảo đường dẫn chính xác
-import DocumentsPage from './Documents/DocumentsPage';
+import DocumentsPage from './pages/Documents/DocumentsPage';
 
 export default function BoomChat() {
   const [chats, setChats] = useState([
@@ -165,7 +165,7 @@ export default function BoomChat() {
     }
   };
   return (
-    <Router>
+
       <div className="flex h-screen bg-white dark:bg-gray-900 transition-colors  duration-200">
           {/* Menu Sidebar */}
           <div
@@ -182,7 +182,6 @@ export default function BoomChat() {
         ></div>
           )}
         {/*RouterPage*/}
-          <Routes>
             <Route
               path="/"
               element={
@@ -222,8 +221,6 @@ export default function BoomChat() {
 
             </Route>
 
-          </Routes>
       </div>
-    </Router>
   );
 }

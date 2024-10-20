@@ -22,7 +22,7 @@ import {user,messages} from './Mockdata';
 import MeetingPage from './pages/Meeting/MeetingPage';
 import ReactLogo from './assets/ok.jpg'; // Đảm bảo đường dẫn chính xác
 import DocumentsPage from './pages/Documents/DocumentsPage';
-
+import Auth from './pages/Login/Auth';
 export default function MessengerInterface() {
   const [chats, setChats] = useState([
     { id: 1, name: 'Kailey', lastMessage: 'Say My Name', time: '9:36', unread: false,status:'0' },
@@ -183,10 +183,15 @@ export default function MessengerInterface() {
         ></div>
           )}
         {/*RouterPage*/}
+
+          
+
           <Routes>
+            <Route path='/auth' element={<Auth></Auth>}></Route>
             <Route
               path="/"
               element={
+                
                 <ChatLayout
                   selectedChat={selectedChat}
                   setSelectedChat={setSelectedChat}

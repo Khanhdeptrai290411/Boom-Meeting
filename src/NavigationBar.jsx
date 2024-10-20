@@ -39,6 +39,12 @@ function NavBar({toggleMenuSidebar}) {
             Schedule
           </li>
         </Link>
+        <Link to="/auth">
+          <li className="cursor-pointer hover:bg-gray-200 dark:text-white dark:hover:bg-gray-700 p-2 rounded transition-all">
+            Auth
+          </li>
+        </Link>
+        
       </ul>
     </div>
   );

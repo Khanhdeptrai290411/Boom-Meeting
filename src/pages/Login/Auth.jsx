@@ -6,24 +6,22 @@ function AuthPage() {
   const toggleAuthMode = () => setIsLogin(!isLogin); // Đổi giữa login và register
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
-      <div className="w-full max-w-md p-8 space-y-6 bg-white dark:bg-gray-800 shadow-md rounded-lg">
-        <h2 className="text-center text-2xl font-bold text-gray-800 dark:text-white">
-          {isLogin ? 'Login' : 'Register'}
-        </h2>
+    <div className="w-full p-6 space-y-6 bg-white dark:bg-gray-800 shadow-md rounded-lg" style={{ margin: 'auto', width: '400px' }}>
+      <h2 className="text-center text-2xl font-bold text-gray-800 dark:text-white">
+        {isLogin ? 'Login' : 'Register'}
+      </h2>
 
-        {isLogin ? <LoginForm /> : <RegisterForm />}
+      {isLogin ? <LoginForm /> : <RegisterForm />}
 
-        <p className="text-center text-sm text-gray-600 dark:text-gray-400">
-          {isLogin ? "Don't have an account?" : 'Already have an account?'}{' '}
-          <button
-            onClick={toggleAuthMode}
-            className="font-medium text-blue-500 hover:underline"
-          >
-            {isLogin ? 'Register' : 'Login'}
-          </button>
-        </p>
-      </div>
+      <p className="text-center text-sm text-gray-600 dark:text-gray-400">
+        {isLogin ? "Don't have an account?" : 'Already have an account?'}{' '}
+        <button
+          onClick={toggleAuthMode}
+          className="font-medium text-blue-500 hover:underline"
+        >
+          {isLogin ? 'Register' : 'Login'}
+        </button>
+      </p>
     </div>
   );
 }
