@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "main":"main.cjs",
+  "main": "main.cjs",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -25,8 +25,10 @@
     "postcss": "^8.4.47",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-icons": "^5.3.0",
     "react-onclickoutside": "^6.13.1",
     "react-router-dom": "^6.26.2",
+    "styled-components": "^6.1.13",
     "tailwind-merge": "^2.5.3",
     "tailwindcss": "^3.4.13"
   },

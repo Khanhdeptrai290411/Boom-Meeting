@@ -17,12 +17,18 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import NavBar from './NavigationBar';
 import ChatLayout from './pages/Chat/ChatLayout';
 
-import { HashRouter as Router, Routes, Route } from 'react-router-dom'; // Use HashRouter for Electron
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom'; // Đảm bảo có Navigate
+
 import {user,messages} from './Mockdata';
+import VideoCall from './pages/Call/VideoCall';
+import MeetingRoom from './pages/Meeting/MeetingRoom';
 import MeetingPage from './pages/Meeting/MeetingPage';
 import ReactLogo from './assets/ok.jpg'; // Đảm bảo đường dẫn chính xác
 import DocumentsPage from './pages/Documents/DocumentsPage';
 import Auth from './pages/Login/Auth';
+import io from 'socket.io-client'; // Import socket.io-client
+
+const socketServerURL = 'http://localhost:3009'; // Địa chỉ server Socket.io
 export default function MessengerInterface() {
   const [chats, setChats] = useState([
     { id: 1, name: 'Kailey', lastMessage: 'Say My Name', time: '9:36', unread: false,status:'0' },
@@ -38,7 +44,27 @@ export default function MessengerInterface() {
   const [showRightSidebar, setShowRightSidebar] = useState(false);
   const [showMenuSidebar, setShowMenuSidebar] = useState(false);
   const [activeTab, setActiveTab] = useState('messages'); // Default tab is 'messages'
+  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
+  const [socket, setSocket] = useState(null); // State để lưu socket instance
+  const user = JSON.parse(localStorage.getItem('user')); // Lấy thông tin người dùng từ local storage
+  const userName = user ? user.username : "Guest"; // Lấy tên người dùng hoặc hiển thị "Guest"
+  const handleLogin = (token) => {
+    localStorage.setItem('token', token); // Lưu token vào Local Storage
+    setIsAuthenticated(true); // Cập nhật trạng thái xác thực
+    const socketConnection = io(socketServerURL, {
+      auth: { token }, // Gửi token khi kết nối
+    });
 
+    socketConnection.on('connect', () => {
+      console.log('Connected to socket server');
+    });
+
+    socketConnection.on('disconnect', () => {
+      console.log('Disconnected from socket server');
+    });
+
+    setSocket(socketConnection); // Lưu socket instance
+  };
   useEffect(() => {
     // Đếm số phần tử có status là '0' và cập nhật friendRequests
     const countStatusZero = chats.filter((chat) => chat.status === '0').length;
@@ -75,6 +101,7 @@ export default function MessengerInterface() {
   const toggleMenuSidebar = () => {
     setShowMenuSidebar(!showMenuSidebar);
   };
+  
   const renderTabContent = () => {
     switch (activeTab) {
       case 'archive':
@@ -187,36 +214,45 @@ export default function MessengerInterface() {
           
 
           <Routes>
-            <Route path='/auth' element={<Auth></Auth>}></Route>
+            <Route path='/' element={<Auth onLogin={handleLogin} />} />
             <Route
-              path="/"
-              element={
-                
+              path="/chat"
+              element={isAuthenticated ? (
                 <ChatLayout
-                  selectedChat={selectedChat}
-                  setSelectedChat={setSelectedChat}
-                  chats={chats}
-                  isDarkMode={isDarkMode}
-                  toggleDarkMode={toggleDarkMode}
-                  toggleMenuSidebar={toggleMenuSidebar}
-                  setActiveTab={setActiveTab}
-                  activeTab={activeTab}
-                  friendRequests={friendRequests}
-                  renderTabContent={renderTabContent}
-                  showRightSidebar={showRightSidebar}
-                  toggleRightSidebar={toggleRightSidebar}
+                selectedChat={selectedChat}
+                setSelectedChat={setSelectedChat}
+                chats={chats}
+                isDarkMode={isDarkMode}
+                toggleDarkMode={toggleDarkMode}
+                toggleMenuSidebar={toggleMenuSidebar}
+                setActiveTab={setActiveTab}
+                activeTab={activeTab}
+                friendRequests={friendRequests}
+                renderTabContent={renderTabContent}
+                showRightSidebar={showRightSidebar}
+                toggleRightSidebar={toggleRightSidebar}
                 />
-              }
+              ) : (
+                <Navigate to="/" replace /> // Chuyển hướng đến trang đăng nhập nếu chưa đăng nhập
+              )}
             />
-            <Route path="/meeting" element={
+            <Route path="/meeting" element={ isAuthenticated ? (
               <MeetingPage 
                 toggleMenuSidebar={toggleMenuSidebar}
                 isDarkMode={isDarkMode}
                 toggleDarkMode={toggleDarkMode}
+                userName = {userName}
               />
               
-              } />
-            <Route path="/document" element={
+            ) : (
+              <Navigate to="/" replace /> // Chuyển hướng đến trang đăng nhập nếu chưa đăng nhập
+            )} />
+            <Route path="/meeting/:roomId" element={isAuthenticated ? (
+                <VideoCall />
+              ) : (
+                <Navigate to="/" replace />
+              )} />
+            <Route path="/document" element={ isAuthenticated ? (
               <DocumentsPage
                 toggleMenuSidebar={toggleMenuSidebar}
                 isDarkMode={isDarkMode}
@@ -224,7 +260,9 @@ export default function MessengerInterface() {
 
                 setSelectedChat={setSelectedChat}
               />
-            }>
+            ) : (
+              <Navigate to="/" replace /> // Chuyển hướng đến trang đăng nhập nếu chưa đăng nhập
+            )}>
 
             </Route>
 

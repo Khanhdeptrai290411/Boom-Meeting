@@ -19,7 +19,7 @@ function NavBar({toggleMenuSidebar}) {
       </div>
       
       <ul className="space-y-4">
-        <Link to="/">
+        <Link to="/chat">
           <li className="cursor-pointer hover:bg-gray-200 dark:text-white dark:hover:bg-gray-700 p-2 rounded transition-all">
             Chat
           </li>
@@ -39,9 +39,9 @@ function NavBar({toggleMenuSidebar}) {
             Schedule
           </li>
         </Link>
-        <Link to="/auth">
+        <Link to="/Logout">
           <li className="cursor-pointer hover:bg-gray-200 dark:text-white dark:hover:bg-gray-700 p-2 rounded transition-all">
-            Auth
+            Logout
           </li>
         </Link>
         

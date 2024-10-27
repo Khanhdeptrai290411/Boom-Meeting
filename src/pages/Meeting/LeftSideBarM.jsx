@@ -5,7 +5,8 @@ import {
     Moon,
   } from 'lucide-react';
 
-function LeftSideBar({ toggleMenuSidebar, title = "Meeting", isDarkMode, toggleDarkMode, userName = "User Name" }) {
+function LeftSideBar({ toggleMenuSidebar, title = "Meeting", isDarkMode, toggleDarkMode, userName={userName} }) {
+  
   return (
     <div className="w-1/3 max-w-xs border-r border-gray-300 dark:border-gray-700 flex flex-col bg-white dark:bg-gray-900 transition-colors h-full">
       {/* Header Section */}

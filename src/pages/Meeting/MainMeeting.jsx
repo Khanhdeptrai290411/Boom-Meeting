@@ -1,14 +1,22 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-
+function generateRandomCode(length) {
+  const characters = 'abcdefghijklmnopqrstuvwxyz';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += characters.charAt(Math.floor(Math.random() * characters.length));
+    if (i % 3 === 2 && i < length - 1) {
+      result += '-'; // Thêm dấu gạch nối sau mỗi 3 ký tự
+    }
+  }
+  return result;
+}
 function MainMeeting() {
   const navigate = useNavigate();
   const [meetingCode, setMeetingCode] = useState('');
 
-  const handleCreateMeeting = () => {
-    const email = 'user@example.com'; // Đây là email giả sử đã có của người dùng
-    const randomNumber = Math.floor(Math.random() * 10000);
-    const generatedMeetingCode = `${email.split('@')[0]}-${randomNumber}`;
+   const handleCreateMeeting = () => {
+    const generatedMeetingCode = generateRandomCode(9);
     navigate(`/meeting/${generatedMeetingCode}`);
   };
 
