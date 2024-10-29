@@ -42,7 +42,7 @@ export default function MessengerInterface() {
           throw new Error('User is not authenticated');
         }
   
-        const response = await fetch(`http://localhost:3009/friends/requests?userId=${userId}`, {
+        const response = await fetch(`${socketServerURL}/friends/requests?userId=${userId}`, {
           method: 'GET',
           headers: {
             Authorization: `Bearer ${localStorage.getItem('token')}`,
@@ -91,7 +91,7 @@ export default function MessengerInterface() {
       console.log("User ID:", userId);
       console.log("Friend ID:", chat.friend_id); // Sử dụng `friend_id` thay vì `user_id`
   
-      const response = await fetch(`http://localhost:3009/friends/accept`, {
+      const response = await fetch(`${socketServerURL}/friends/accept`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -136,7 +136,7 @@ export default function MessengerInterface() {
         throw new Error('User is not authenticated');
       }
   
-      const response = await fetch(`http://localhost:3009/friends/decline`, {
+      const response = await fetch(`${socketServerURL}/friends/decline`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -202,7 +202,7 @@ export default function MessengerInterface() {
 useEffect(() => {
   const fetchFriendsList = async () => {
     try {
-      const response = await fetch(`http://localhost:3009/friends/list?userId=${userId}`, {
+      const response = await fetch(`${socketServerURL}/friends/list?userId=${userId}`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
@@ -256,7 +256,7 @@ useEffect(() => {
 useEffect(() => {
   const fetchUsers = async () => {
     try {
-      const response = await fetch('http://localhost:3009/api/users', {
+      const response = await fetch(`${socketServerURL}/api/users`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`
         }
@@ -287,7 +287,7 @@ const sendFriendRequest = async (friendId) => {
     const user = JSON.parse(localStorage.getItem('user')); 
     const userId = user ? user.id : null; // Lấy ID người dùng từ localStorage
 
-    const response = await fetch(`http://localhost:3009/friends/request`, {
+    const response = await fetch(`${socketServerURL}/friends/request`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

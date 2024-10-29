@@ -28,12 +28,12 @@ function LoginForm({ onLogin }) {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const navigate = useNavigate(); // Khởi tạo useNavigate
-
+  const socketServerURL ='http://localhost:3009'
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
-      const response = await fetch('http://localhost:3009/api/login', {
+      const response = await fetch(`${socketServerURL}/api/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -107,7 +107,7 @@ function RegisterForm() {
     e.preventDefault();
 
     try {
-      const response = await fetch('http://localhost:3009/api/users', {
+      const response = await fetch(`${socketServerURL}/api/users`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
