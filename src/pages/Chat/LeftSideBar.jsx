@@ -17,7 +17,10 @@ function LeftSideBar({
   activeTab, 
   friendRequests, 
   renderTabContent,
-  title='Chats' 
+  title='Chats' ,
+  searchQuery,
+  setSearchQuery,
+  sendFriendRequest
 }) {
   return (
     <div className="w-1/3 border-r border-gray-300 dark:border-gray-700 flex flex-col">
@@ -52,6 +55,8 @@ function LeftSideBar({
             type="text"
             placeholder="Search"
             className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)} // Cập nhật giá trị tìm kiếm
           />
         </div>
       </div>

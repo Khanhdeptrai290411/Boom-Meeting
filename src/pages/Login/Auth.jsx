@@ -26,6 +26,7 @@ function AuthPage({ onLogin }) {
 function LoginForm({ onLogin }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [message, setMessage] = useState('');
   const navigate = useNavigate(); // Khởi tạo useNavigate
 
   const handleSubmit = async (e) => {
@@ -56,14 +57,15 @@ function LoginForm({ onLogin }) {
 
       // Điều hướng đến main page sau khi đăng nhập
       navigate(`/chat?token=${data.token}`); // Thêm token vào URL
-
     } catch (error) {
       console.error('Error during login:', error);
+      setMessage('Login failed. Please check your email and password.');
     }
   };
 
   return (
     <form className="space-y-4" onSubmit={handleSubmit}>
+      {message && <p className="text-red-500 text-sm">{message}</p>}
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
         <input
@@ -98,6 +100,8 @@ function RegisterForm() {
   const [username, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [message, setMessage] = useState('');
+  const navigate = useNavigate(); // Khởi tạo useNavigate
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -117,15 +121,21 @@ function RegisterForm() {
 
       const data = await response.json();
       console.log('Registration successful:', data);
-      // Có thể chuyển hướng đến trang đăng nhập hoặc thông báo cho người dùng
+      setMessage('Registration successful! Redirecting to login...');
 
+      // Chuyển hướng đến trang đăng nhập sau khi đăng ký thành công
+      setTimeout(() => {
+        navigate('/');
+      }, 2000);
     } catch (error) {
       console.error('Error during registration:', error);
+      setMessage('Registration failed. Please try again.');
     }
   };
 
   return (
     <form className="space-y-4" onSubmit={handleSubmit}>
+      {message && <p className="text-red-500 text-sm">{message}</p>}
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
         <input

@@ -17,6 +17,9 @@ function ChatLayout({
   renderTabContent,
   showRightSidebar,
   toggleRightSidebar,
+  searchQuery, // Nhận searchQuery từ props
+  setSearchQuery,
+  sendFriendRequest,
 }) {
   return (
     <>
@@ -29,6 +32,9 @@ function ChatLayout({
           activeTab={activeTab}
           friendRequests={friendRequests}
           renderTabContent={renderTabContent}
+          searchQuery={searchQuery} // Nhận searchQuery từ props// Nhận searchQuery từ props
+          setSearchQuery={setSearchQuery} // Truyền setSearchQuery
+          sendFriendRequest={sendFriendRequest}
         />
 
       {/* Main Chat Area */}

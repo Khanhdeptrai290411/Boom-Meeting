@@ -1,13 +1,15 @@
 import React from 'react';
-import {
-  Phone,
-  Video,
-  Info,
-  Send
-} from 'lucide-react';
+import { Phone, Video, Info, Send } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 function MainChat({ selectedChat, toggleRightSidebar }) {
+  // Dữ liệu giả của tin nhắn
+  const messages = [
+    { sender: 'A', message: 'Hello, how are you?', timestamp: '10:00 AM' },
+    { sender: 'B', message: 'I am fine, thank you! And you?', timestamp: '10:02 AM' },
+    { sender: 'A', message: 'Doing well, thanks for asking!', timestamp: '10:03 AM' },
+  ];
+
   return (
     <div className="flex-1 flex flex-col">
       {selectedChat && (
@@ -35,13 +37,35 @@ function MainChat({ selectedChat, toggleRightSidebar }) {
           </div>
 
           {/* Chat Messages Section */}
-          <div className="flex-1 p-4">
-            {/* Chat messages would go here */}
+          <div className="flex-1 p-4 space-y-4">
+            {messages.map((msg, index) => (
+              <div
+                key={index}
+                className={`flex ${msg.sender === 'A' ? 'justify-start' : 'justify-end'}`}
+              >
+                <div className={`p-3 rounded-lg ${msg.sender === 'A' ? 'bg-gray-200' : 'bg-blue-500 text-white'}`}>
+                  <p className="text-sm">{msg.message}</p>
+                  <p className="text-xs text-gray-500">{msg.timestamp}</p>
+                </div>
+              </div>
+            ))}
           </div>
 
           {/* Input Section */}
           <div className="p-4 border-t border-gray-300 dark:border-gray-700">
             <div className="flex items-center">
+              <input
+                type="file"
+                id="file-upload"
+                className="hidden"
+                onChange={(e) => handleFileUpload(e)}
+              />
+              <label
+                htmlFor="file-upload"
+                className="m-2 p-2 bg-gray-300 dark:bg-white text-white dark:text-black rounded-full shadow-md hover:opacity-90 transition-opacity cursor-pointer"
+              >
+                <span className="w-5 h-5">📎</span>
+              </label>
               <input
                 type="text"
                 placeholder="Type a message..."

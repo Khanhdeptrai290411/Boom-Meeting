@@ -30,14 +30,135 @@ import io from 'socket.io-client'; // Import socket.io-client
 
 const socketServerURL = 'http://localhost:3009'; // Địa chỉ server Socket.io
 export default function MessengerInterface() {
-  const [chats, setChats] = useState([
-    { id: 1, name: 'Kailey', lastMessage: 'Say My Name', time: '9:36', unread: false,status:'0' },
-    { id: 2, name: 'Maryjane', lastMessage: 'Check On It', time: '12:02', unread: true,status:'1' },
-    { id: 3, name: 'Niko', lastMessage: 'You Send Me', time: '10:35', unread: true,status:'1' },
-    { id: 4, name: 'Agustin', lastMessage: 'The Tide is High', time: '04:00', unread: false,status:'0' },
-    { id: 5, name: 'Manuel', lastMessage: 'I Will Always Love Y...', time: '08:42', unread: false,status:'0' },
-    { id: 6, name: 'Treva', lastMessage: 'There goes my baby', time: '08:42', unread: false,status:'1' },
-  ]);
+  const [chats, setChats] = useState([]);
+
+  useEffect(() => {
+    const fetchFriendRequests = async () => {
+      try {
+        const user = JSON.parse(localStorage.getItem('user'));
+        const userId = user ? user.id : null;
+  
+        if (!userId) {
+          throw new Error('User is not authenticated');
+        }
+  
+        const response = await fetch(`http://localhost:3009/friends/requests?userId=${userId}`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+        });
+  
+        if (!response.ok) {
+          throw new Error('Failed to fetch friend requests');
+        }
+  
+        const requests = await response.json();
+        setChats(requests.map(req => ({
+          id: req.id,
+          user_id: req.user_id,
+          friend_id: req.friend_id,
+          name: req.userDetail ? req.userDetail.username : 'Unknown', // Lấy thông tin từ userDetail
+          status: req.status,
+        })));
+      } catch (error) {
+        console.error('Error fetching friend requests:', error);
+      }
+    };
+  
+    fetchFriendRequests();
+  }, []);
+  
+
+  
+  
+
+  const handleAccept = async (id) => {
+    try {
+      const chat = chats.find(chat => chat.id === id);
+      
+      if (!chat) {
+        throw new Error('Friend request not found');
+      }
+  
+      const user = JSON.parse(localStorage.getItem('user'));
+      const userId = user ? user.id : null;
+  
+      if (!userId) {
+        throw new Error('User is not authenticated');
+      }
+  
+      console.log("User ID:", userId);
+      console.log("Friend ID:", chat.friend_id); // Sử dụng `friend_id` thay vì `user_id`
+  
+      const response = await fetch(`http://localhost:3009/friends/accept`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({
+          userId: userId,          // ID của người chấp nhận yêu cầu (người đăng nhập)
+          friendId: chat.user_id   // ID của người gửi yêu cầu (bạn bè)
+        }),
+      });
+  
+      if (!response.ok) {
+        const errorResponse = await response.json();
+        throw new Error(`Failed to accept friend request: ${errorResponse.message}`);
+      }
+  
+      const result = await response.json();
+      console.log(result.message);
+  
+      setChats(prevChats => prevChats.filter(chat => chat.id !== id));
+    } catch (error) {
+      console.error('Error accepting friend request:', error);
+    }
+  };
+  
+  
+  
+  
+
+  const handleDecline = async (id) => {
+    try {
+      const chat = chats.find(chat => chat.id === id);
+      
+      if (!chat) {
+        throw new Error('Friend request not found');
+      }
+  
+      const user = JSON.parse(localStorage.getItem('user'));
+      const userId = user ? user.id : null;
+  
+      if (!userId) {
+        throw new Error('User is not authenticated');
+      }
+  
+      const response = await fetch(`http://localhost:3009/friends/decline`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({
+          userId: userId,           // ID của người dùng hiện tại (người nhận yêu cầu)
+          friendId: chat.user_id    // ID của người gửi yêu cầu kết bạn
+        }),
+      });
+  
+      if (!response.ok) {
+        throw new Error('Failed to decline friend request');
+      }
+  
+      setChats(prevChats => prevChats.filter(chat => chat.id !== id));
+    } catch (error) {
+      console.error('Error declining friend request:', error);
+    }
+  };
+  
+
   
   const [selectedChat, setSelectedChat] = useState(chats[0]);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -48,6 +169,7 @@ export default function MessengerInterface() {
   const [socket, setSocket] = useState(null); // State để lưu socket instance
   const user = JSON.parse(localStorage.getItem('user')); // Lấy thông tin người dùng từ local storage
   const userName = user ? user.username : "Guest"; // Lấy tên người dùng hoặc hiển thị "Guest"
+  const userId = user ? user.id : null; // Lấy ID người dùng
   const handleLogin = (token) => {
     localStorage.setItem('token', token); // Lưu token vào Local Storage
     setIsAuthenticated(true); // Cập nhật trạng thái xác thực
@@ -65,12 +187,49 @@ export default function MessengerInterface() {
 
     setSocket(socketConnection); // Lưu socket instance
   };
+  //
   useEffect(() => {
-    // Đếm số phần tử có status là '0' và cập nhật friendRequests
-    const countStatusZero = chats.filter((chat) => chat.status === '0').length;
+    // Đếm số phần tử có status là 'accepted' và cập nhật friendRequests
+    const countStatusZero = chats.filter((chat) => chat.status === 'accepted').length;
     setFriendRequests(countStatusZero);
   }, [chats]);
+
   const [friendRequests, setFriendRequests] = useState(); // Number of friend requests
+
+  const [friends, setFriends] = useState([]);
+
+// useEffect để lấy danh sách bạn bè sau khi component mount
+useEffect(() => {
+  const fetchFriendsList = async () => {
+    try {
+      const response = await fetch(`http://localhost:3009/friends/list?userId=${userId}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch friends list');
+      }
+
+      const friendsList = await response.json();
+      setFriends(friendsList.map(friend => ({
+        id: friend.id,
+        name: friend.friendDetail.username, // Dùng alias friendDetail từ API
+        email: friend.friendDetail.email,
+      })));
+    } catch (error) {
+      console.error('Error fetching friends list:', error);
+    }
+  };
+
+  if (userId) {
+    fetchFriendsList();
+  }
+}, [userId]);
+
+//đổi màu
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
@@ -78,120 +237,194 @@ export default function MessengerInterface() {
       document.documentElement.classList.remove('dark');
     }
   }, [isDarkMode]);
-
+//set để nút đổi màu
   const toggleDarkMode = () => {
     setIsDarkMode(!isDarkMode);
   };
-
+// bật tắt navbar
   const toggleRightSidebar = () => {
     setShowRightSidebar(!showRightSidebar);
   };
-  const handleAccept = (id) => {
-    setChats((prevChats) =>
-      prevChats.map((chat) =>
-        chat.id === id ? { ...chat, status: '1' } : chat
-      )
-    );
-  };
   
-  const handleDecline = (id) => {
-    setChats((prevChats) => prevChats.filter((chat) => chat.id !== id));
-  };
   
   const toggleMenuSidebar = () => {
     setShowMenuSidebar(!showMenuSidebar);
   };
-  
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'archive':
-        return (
-          <div className="overflow-y-auto flex-1 p-4">
-            {/* Archive messages content */}
-            <p className="text-gray-600 dark:text-gray-400">These are archived messages from people who haven’t added you as a friend yet.</p>
-          </div>
-        );
-        case 'users':
-          return (
-            <div className="overflow-y-auto flex-1 p-4">
-              <h2 className="text-2xl font-semibold text-center dark:text-white mb-6">
-                Friend Requests
-              </h2>
-          
-              {/* Lọc và hiển thị những người có status = '0' */}
-              {chats
-                .filter((chat) => chat.status === '0')
-                .map((chat) => (
-                  <div
-                    key={chat.id}
-                    className="flex flex-col sm:flex-row items-center sm:items-start p-6 bg-white dark:bg-gray-800 rounded-xl mb-5 shadow-lg transition-all hover:bg-gray-50 dark:hover:bg-gray-700 space-y-4 sm:space-y-0 sm:space-x-6"
-                  >
-                    {/* Avatar */}
-                    <Avatar className="w-20 h-20 rounded-full shadow-md flex-shrink-0">
-                      <AvatarImage src={ReactLogo} alt={chat.name} />
-                      <AvatarFallback>{chat.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-          
-                    {/* Nội dung yêu cầu */}
-                    <div className="flex-1 text-center sm:text-left">
-                      {/* Tên người gửi */}
-                      <span className="text-xl font-medium dark:text-white block mb-2">
-                        {chat.name}
-                      </span>
-          
-                      {/* Nút Accept và Decline */}
-                      <div className="flex flex-col sm:flex-row sm:space-x-4 space-y-3 sm:space-y-0 mt-2">
-                        <button
-                          className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-all text-sm w-full sm:w-auto"
-                          onClick={() => handleAccept(chat.id)}
-                        >
-                          Accept
-                        </button>
-                        <button
-                          className="bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-white px-6 py-2 rounded-lg hover:bg-gray-400 dark:hover:bg-gray-500 transition-all text-sm w-full sm:w-auto"
-                          onClick={() => handleDecline(chat.id)}
-                        >
-                          Decline
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          );
-          case 'messages':
-            default:
-              return (
-                <div className="overflow-y-auto flex-1">
-                  {/* Lọc và hiển thị những người có status = '1' (đã được accept) */}
-                  {chats
-                    .filter((chat) => chat.status === '1')
-                    .map((chat) => (
-                      <div
-                        key={chat.id}
-                        className={`flex items-center p-4 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-800 cursor-pointer transition-all ${
-                          selectedChat && selectedChat.id === chat.id ? 'bg-blue-100 dark:bg-blue-900' : ''
-                        }`}
-                        onClick={() => setSelectedChat(chat)}
-                      >
-                        <Avatar className="w-12 h-12 mr-4 shadow-md dark:shadow-gray-700">
-                          <AvatarImage src={ReactLogo} alt={chat.name} />
-                          <AvatarFallback>{chat.name.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <div className="flex justify-between items-center">
-                            <h2 className="font-semibold dark:text-white">{chat.name}</h2>
-                            <span className="text-sm text-gray-500 dark:text-gray-400">{chat.time}</span>
-                          </div>
-                          <p className="text-sm text-gray-600 dark:text-gray-400 truncate">{chat.lastMessage}</p>
-                        </div>
-                        {chat.unread && <div className="w-3 h-3 bg-blue-500 rounded-full self-center"></div>}
-                      </div>
-                    ))}
-                </div>
-              );
+  const [allUsers, setAllUsers] = useState([]); // State để lưu danh sách tất cả người dùng
+
+//lấy tất cả users
+useEffect(() => {
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch('http://localhost:3009/api/users', {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch users');
+      }
+
+      const users = await response.json();
+      setAllUsers(users);
+    } catch (error) {
+      console.error('Error fetching users:', error);
     }
   };
+
+  if (activeTab === 'archive') {
+    fetchUsers();
+  }
+}, [activeTab]);
+//render phần search
+const [searchQuery, setSearchQuery] = useState('');
+
+//GỬi LMKB
+const sendFriendRequest = async (friendId) => {
+  try {
+    // Lấy ID người dùng từ localStorage
+    const user = JSON.parse(localStorage.getItem('user')); 
+    const userId = user ? user.id : null; // Lấy ID người dùng từ localStorage
+
+    const response = await fetch(`http://localhost:3009/friends/request`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
+      },
+      body: JSON.stringify({ userId: userId, friendId: friendId }), // userId là ID của người gửi yêu cầu, friendId là ID của bạn
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to send friend request');
+    }
+
+    const result = await response.json();
+    console.log('Friend request sent:', result);
+  } catch (error) {
+    console.error('Error sending friend request:', error);
+  }
+};
+
+
+const renderTabContent = () => {
+  switch (activeTab) {
+    case 'archive':
+      const filteredUsers = allUsers.filter(user =>
+        user.username.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      return (
+        <div className="overflow-y-auto flex-1 p-4">
+          <h2 className="text-2xl font-semibold text-center dark:text-white mb-6">
+            All Users
+          </h2>
+
+          {filteredUsers.map((user) => (
+            <div key={user.id} className="flex flex-col sm:flex-row items-center sm:items-start p-6 bg-white dark:bg-gray-800 rounded-xl mb-5 shadow-lg transition-all hover:bg-gray-50 dark:hover:bg-gray-700 space-y-4 sm:space-y-0 sm:space-x-6">
+              {/* Nội dung hiển thị thông tin người dùng */}
+              <Avatar className="w-20 h-20 rounded-full shadow-md flex-shrink-0">
+                <AvatarImage src={ReactLogo} alt={user.username} />
+                <AvatarFallback>{user.username.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1 text-center sm:text-left">
+                <span className="text-xl font-medium dark:text-white block mb-2">
+                  {user.username}
+                </span>
+                <button className="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 transition-all text-sm w-full sm:w-auto" onClick={() => sendFriendRequest(user.id)}>
+                  Add Friend
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+
+      case 'users':
+        return (
+          <div className="overflow-y-auto flex-1 p-4">
+            <h2 className="text-2xl font-semibold text-center dark:text-white mb-6">
+              Friend Requests
+            </h2>
+
+            {/* Kiểm tra nếu không có yêu cầu kết bạn */}
+            {chats.length === 0 ? (
+              <p className="text-center text-gray-500 dark:text-gray-400">
+                No friend requests available.
+              </p>
+            ) : (
+              chats.map((chat) => (
+                <div
+                  key={chat.id}
+                  className="flex flex-col sm:flex-row items-center sm:items-start p-6 bg-white dark:bg-gray-800 rounded-xl mb-5 shadow-lg transition-all hover:bg-gray-50 dark:hover:bg-gray-700 space-y-4 sm:space-y-0 sm:space-x-6"
+                >
+                  <Avatar className="w-20 h-20 rounded-full shadow-md flex-shrink-0">
+                    <AvatarImage src={ReactLogo} alt={chat.name} />
+                    <AvatarFallback>{chat.name ? chat.name.charAt(0) : '?'}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 text-center sm:text-left">
+                    <span className="text-xl font-medium dark:text-white block mb-2">
+                      {chat.name}
+                    </span>
+                    <div className="flex flex-col sm:flex-row sm:space-x-4 space-y-3 sm:space-y-0 mt-2">
+                      {/* Button Accept */}
+                      <button
+                        className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-all text-sm w-full sm:w-auto"
+                        onClick={() => handleAccept(chat.id)}
+                      >
+                        Accept
+                      </button>
+
+                      {/* Button Decline */}
+                      <button
+                        className="bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-white px-6 py-2 rounded-lg hover:bg-gray-400 dark:hover:bg-gray-500 transition-all text-sm w-full sm:w-auto"
+                        onClick={() => handleDecline(chat.id)}
+                      >
+                        Decline
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        );
+
+
+        case 'messages':
+      default:
+        // Hiển thị danh sách bạn bè
+        const filteredFriends = friends.filter(friend =>
+          friend.name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+        return (
+          <div className="overflow-y-auto flex-1">
+            {filteredFriends.map((friend) => (
+              <div
+                key={friend.id}
+                className={`flex items-center p-4 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-800 cursor-pointer transition-all ${
+                  selectedChat && selectedChat.id === friend.id ? 'bg-blue-100 dark:bg-blue-900' : ''
+                }`}
+                onClick={() => setSelectedChat(friend)}
+              >
+                <Avatar className="w-12 h-12 mr-4 shadow-md dark:shadow-gray-700">
+                  <AvatarImage src={ReactLogo} alt={friend.name} />
+                  <AvatarFallback>{friend.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <div className="flex justify-between items-center">
+                    <h2 className="font-semibold dark:text-white">{friend.name}</h2>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">{friend.email}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+          
+    }
+};
+
   return (
     <Router>
       <div className="flex h-screen bg-white dark:bg-gray-900 transition-colors  duration-200">
@@ -231,6 +464,8 @@ export default function MessengerInterface() {
                 renderTabContent={renderTabContent}
                 showRightSidebar={showRightSidebar}
                 toggleRightSidebar={toggleRightSidebar}
+                searchQuery={searchQuery} // Truyền searchQuery vào ChatLayout
+                setSearchQuery={setSearchQuery} // Truyền setSearchQuery vào ChatLayout
                 />
               ) : (
                 <Navigate to="/" replace /> // Chuyển hướng đến trang đăng nhập nếu chưa đăng nhập

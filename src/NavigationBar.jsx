@@ -34,11 +34,6 @@ function NavBar({toggleMenuSidebar}) {
             Document
           </li>
         </Link>
-        <Link to="/schedule">
-          <li className="cursor-pointer hover:bg-gray-200 dark:text-white dark:hover:bg-gray-700 p-2 rounded transition-all">
-            Schedule
-          </li>
-        </Link>
         <Link to="/Logout">
           <li className="cursor-pointer hover:bg-gray-200 dark:text-white dark:hover:bg-gray-700 p-2 rounded transition-all">
             Logout
