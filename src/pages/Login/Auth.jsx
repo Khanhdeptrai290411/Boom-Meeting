@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom'; // Import useNavigate
-
+const socketServerURL ='http://localhost:3009';
 function AuthPage({ onLogin }) {
   const [isLogin, setIsLogin] = useState(true); // Quản lý trạng thái đăng nhập/đăng ký
   const toggleAuthMode = () => setIsLogin(!isLogin); // Chuyển đổi giữa đăng nhập và đăng ký
@@ -28,10 +28,10 @@ function LoginForm({ onLogin }) {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const navigate = useNavigate(); // Khởi tạo useNavigate
-  const socketServerURL ='http://localhost:3009'
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+  
     try {
       const response = await fetch(`${socketServerURL}/api/login`, {
         method: 'POST',
@@ -40,28 +40,30 @@ function LoginForm({ onLogin }) {
         },
         body: JSON.stringify({ email, password }),
       });
-
+  
       if (!response.ok) {
-        throw new Error('Login failed!');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Login failed!');
       }
-
+  
       const data = await response.json();
       console.log('Login successful:', data);
-
+  
       // Lưu token và thông tin người dùng vào local storage
       localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user)); // Lưu thông tin người dùng
-
+      localStorage.setItem('user', JSON.stringify(data.user));
+  
       // Gọi hàm onLogin để cập nhật trạng thái xác thực trong App
       onLogin(data.token);
-
+  
       // Điều hướng đến main page sau khi đăng nhập
-      navigate(`/chat?token=${data.token}`); // Thêm token vào URL
+      navigate(`/chat?token=${data.token}`);
     } catch (error) {
       console.error('Error during login:', error);
-      setMessage('Login failed. Please check your email and password.');
+      setMessage(error.message || 'Login failed. Please check your email and password.');
     }
   };
+  
 
   return (
     <form className="space-y-4" onSubmit={handleSubmit}>
@@ -102,7 +104,6 @@ function RegisterForm() {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const navigate = useNavigate(); // Khởi tạo useNavigate
-
   const handleSubmit = async (e) => {
     e.preventDefault();
 

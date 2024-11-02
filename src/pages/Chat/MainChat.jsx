@@ -1,20 +1,97 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Phone, Video, Info, Send } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
-function MainChat({ selectedChat, toggleRightSidebar }) {
-  // Dữ liệu giả của tin nhắn
-  const messages = [
-    { sender: 'A', message: 'Hello, how are you?', timestamp: '10:00 AM' },
-    { sender: 'B', message: 'I am fine, thank you! And you?', timestamp: '10:02 AM' },
-    { sender: 'A', message: 'Doing well, thanks for asking!', timestamp: '10:03 AM' },
-  ];
+function MainChat({ selectedChat, toggleRightSidebar, socket, socketServerURL }) {
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
+  const user = JSON.parse(localStorage.getItem('user'));
+  const userId = user ? user.id : null;
+
+  useEffect(() => {
+    if (!socketServerURL || !selectedChat || !userId) return;
+
+    const fetchMessages = async () => {
+      try {
+        const response = await fetch(`${socketServerURL}/api/chats/${selectedChat.id}/messages`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch messages');
+        }
+
+        const data = await response.json();
+        setMessages(data);
+      } catch (error) {
+        console.error('Error fetching messages:', error);
+      }
+    };
+
+    fetchMessages();
+
+    // Tham gia vào phòng chat để nhận tin nhắn real-time
+    if (socket && selectedChat) {
+      socket.emit('joinChat', selectedChat.id);
+
+      // Lắng nghe sự kiện 'receiveMessage' từ server qua socket
+      socket.on('receiveMessage', (message) => {
+        if (message.chatId === selectedChat.id) {
+          setMessages((prevMessages) => [...prevMessages, message]);
+        }
+      });
+
+      return () => {
+        socket.off('receiveMessage');
+      };
+    }
+  }, [selectedChat, socket, userId, socketServerURL]);
+
+  const handleSendMessage = async () => {
+    if (newMessage.trim() !== '' && selectedChat) {
+      const message = {
+        chatId: selectedChat.id,
+        senderId: userId,
+        content: newMessage,
+      };
+
+      try {
+        // Gửi tin nhắn đến server để lưu vào cơ sở dữ liệu
+        const response = await fetch(`${socketServerURL}/api/chats/send`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+          body: JSON.stringify(message),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to send message');
+        }
+
+        const savedMessage = await response.json();
+
+        // Gửi tin nhắn qua socket để phát lại cho các client khác
+        if (socket) {
+          socket.emit('sendMessage', savedMessage.message);
+        }
+
+        // Thêm tin nhắn vào danh sách hiển thị
+        setMessages((prevMessages) => [...prevMessages, savedMessage.message]);
+        setNewMessage(''); // Xóa nội dung đã nhập sau khi gửi thành công
+      } catch (error) {
+        console.error('Error sending message:', error);
+      }
+    }
+  };
 
   return (
     <div className="flex-1 flex flex-col">
       {selectedChat && (
         <>
-          {/* Header Section */}
           <div className="p-4 flex justify-between items-center border-b border-gray-300 dark:border-gray-700">
             <div className="flex items-center">
               <Avatar className="w-10 h-10 mr-3 dark:shadow-gray-700 dark:text-white shadow-md">
@@ -36,42 +113,39 @@ function MainChat({ selectedChat, toggleRightSidebar }) {
             </div>
           </div>
 
-          {/* Chat Messages Section */}
-          <div className="flex-1 p-4 space-y-4">
+          <div className="flex-1 p-4 space-y-4 overflow-y-auto">
             {messages.map((msg, index) => (
               <div
                 key={index}
-                className={`flex ${msg.sender === 'A' ? 'justify-start' : 'justify-end'}`}
+                className={`flex ${msg.senderId === userId ? 'justify-end' : 'justify-start'}`}
               >
-                <div className={`p-3 rounded-lg ${msg.sender === 'A' ? 'bg-gray-200' : 'bg-blue-500 text-white'}`}>
-                  <p className="text-sm">{msg.message}</p>
-                  <p className="text-xs text-gray-500">{msg.timestamp}</p>
+                <div
+                  className={`p-3 rounded-lg max-w-xs ${
+                    msg.senderId === userId ? 'bg-blue-500 text-white' : 'bg-gray-200 text-black'
+                  }`}
+                >
+                  <p className="text-sm">{msg.content}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {new Date(msg.timestamp).toLocaleTimeString()}
+                  </p>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Input Section */}
           <div className="p-4 border-t border-gray-300 dark:border-gray-700">
             <div className="flex items-center">
               <input
-                type="file"
-                id="file-upload"
-                className="hidden"
-                onChange={(e) => handleFileUpload(e)}
-              />
-              <label
-                htmlFor="file-upload"
-                className="m-2 p-2 bg-gray-300 dark:bg-white text-white dark:text-black rounded-full shadow-md hover:opacity-90 transition-opacity cursor-pointer"
-              >
-                <span className="w-5 h-5">📎</span>
-              </label>
-              <input
                 type="text"
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
                 placeholder="Type a message..."
                 className="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
               />
-              <button className="ml-2 p-2 bg-blue-500 dark:bg-white text-white dark:text-black rounded-full shadow-md hover:opacity-90 transition-opacity">
+              <button
+                onClick={handleSendMessage}
+                className="ml-2 p-2 bg-blue-500 dark:bg-white text-white dark:text-black rounded-full shadow-md hover:opacity-90 transition-opacity"
+              >
                 <Send className="w-5 h-5" />
               </button>
             </div>

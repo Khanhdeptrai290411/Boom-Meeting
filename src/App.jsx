@@ -76,20 +76,20 @@ export default function MessengerInterface() {
   const handleAccept = async (id) => {
     try {
       const chat = chats.find(chat => chat.id === id);
-      
+  
       if (!chat) {
         throw new Error('Friend request not found');
       }
   
       const user = JSON.parse(localStorage.getItem('user'));
-      const userId = user ? user.id : null;
+      const userId = user ? user.id : null;  // ID người dùng hiện tại
   
       if (!userId) {
         throw new Error('User is not authenticated');
       }
   
       console.log("User ID:", userId);
-      console.log("Friend ID:", chat.friend_id); // Sử dụng `friend_id` thay vì `user_id`
+      console.log("Friend ID:", chat.user_id); // `user_id` là ID của người gửi yêu cầu kết bạn
   
       const response = await fetch(`${socketServerURL}/friends/accept`, {
         method: 'POST',
@@ -98,8 +98,8 @@ export default function MessengerInterface() {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
         body: JSON.stringify({
-          userId: userId,          // ID của người chấp nhận yêu cầu (người đăng nhập)
-          friendId: chat.user_id   // ID của người gửi yêu cầu (bạn bè)
+          userId: userId,          // ID người dùng hiện tại
+          friendId: chat.user_id   // ID người gửi yêu cầu kết bạn
         }),
       });
   
@@ -111,11 +111,13 @@ export default function MessengerInterface() {
       const result = await response.json();
       console.log(result.message);
   
+      // Xóa yêu cầu kết bạn khỏi danh sách
       setChats(prevChats => prevChats.filter(chat => chat.id !== id));
     } catch (error) {
       console.error('Error accepting friend request:', error);
     }
   };
+  
   
   
   
@@ -170,6 +172,7 @@ export default function MessengerInterface() {
   const user = JSON.parse(localStorage.getItem('user')); // Lấy thông tin người dùng từ local storage
   const userName = user ? user.username : "Guest"; // Lấy tên người dùng hoặc hiển thị "Guest"
   const userId = user ? user.id : null; // Lấy ID người dùng
+  
   const handleLogin = (token) => {
     localStorage.setItem('token', token); // Lưu token vào Local Storage
     setIsAuthenticated(true); // Cập nhật trạng thái xác thực
@@ -200,34 +203,37 @@ export default function MessengerInterface() {
 
 // useEffect để lấy danh sách bạn bè sau khi component mount
 useEffect(() => {
-  const fetchFriendsList = async () => {
-    try {
-      const response = await fetch(`${socketServerURL}/friends/list?userId=${userId}`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
+  const fetchChatMembers = async () => {
+    if (!userId) {
+      console.error('Invalid User ID');
+      return;
+    }
 
+    try {
+      // Giả sử bạn muốn lấy những cuộc trò chuyện của user hiện tại
+      const response = await fetch(`${socketServerURL}/api/chats/chatmembers/list?userId=${userId}`);
       if (!response.ok) {
-        throw new Error('Failed to fetch friends list');
+        throw new Error('Failed to fetch chat members');
       }
 
-      const friendsList = await response.json();
-      setFriends(friendsList.map(friend => ({
-        id: friend.id,
-        name: friend.friendDetail.username, // Dùng alias friendDetail từ API
-        email: friend.friendDetail.email,
+      const chatMembers = await response.json();
+
+      // Xác định chatId dựa trên các thành viên và gán vào `friends` hoặc `selectedChat`
+      setFriends(chatMembers.map(member => ({
+        id: member.chatId, // Sử dụng chatId thay vì userId để tham chiếu tới cuộc trò chuyện
+        userId: member.userId,
+        name: member.user.username,
+        email: member.user.email,
       })));
     } catch (error) {
-      console.error('Error fetching friends list:', error);
+      console.error('Error fetching chat members:', error);
     }
   };
 
-  if (userId) {
-    fetchFriendsList();
-  }
+  fetchChatMembers();
 }, [userId]);
+
+
 
 //đổi màu
   useEffect(() => {
@@ -466,6 +472,8 @@ const renderTabContent = () => {
                 toggleRightSidebar={toggleRightSidebar}
                 searchQuery={searchQuery} // Truyền searchQuery vào ChatLayout
                 setSearchQuery={setSearchQuery} // Truyền setSearchQuery vào ChatLayout
+                socket={socket} // Truyền socket xuống ChatLayout
+                socketServerURL={socketServerURL}
                 />
               ) : (
                 <Navigate to="/" replace /> // Chuyển hướng đến trang đăng nhập nếu chưa đăng nhập

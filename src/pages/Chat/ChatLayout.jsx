@@ -20,6 +20,8 @@ function ChatLayout({
   searchQuery, // Nhận searchQuery từ props
   setSearchQuery,
   sendFriendRequest,
+  socket,
+  socketServerURL
 }) {
   return (
     <>
@@ -35,12 +37,15 @@ function ChatLayout({
           searchQuery={searchQuery} // Nhận searchQuery từ props// Nhận searchQuery từ props
           setSearchQuery={setSearchQuery} // Truyền setSearchQuery
           sendFriendRequest={sendFriendRequest}
+          socketServerURL={socketServerURL}
         />
 
       {/* Main Chat Area */}
       <MainChat 
         selectedChat={selectedChat} 
         toggleRightSidebar={toggleRightSidebar} 
+        socket={socket}
+        socketServerURL={socketServerURL}
       />
 
       {/* Right Sidebar */}

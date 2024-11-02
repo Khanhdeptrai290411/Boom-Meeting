@@ -4,7 +4,7 @@ import { FaMicrophone, FaMicrophoneSlash, FaVideo, FaVideoSlash, FaDesktop, FaPh
 import io from 'socket.io-client';
 import styled from 'styled-components';
 
-const socketServerURL = 'http://localhost:3009';
+const socketServerURL = 'http://172.20.10.4:3009';
 
 const VideoCall = () => {
   const { roomId } = useParams();
