@@ -48,7 +48,9 @@ function MeetingRoom() {
       }
     };
 
-    socket.emit('join-room', roomId);
+
+
+    socket.emit('join-room', roomId,);
     socket.on('offer', async (offer) => {
       console.log("Offer received:", offer);
       await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));

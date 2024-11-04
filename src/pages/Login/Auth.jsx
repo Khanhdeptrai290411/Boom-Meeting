@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom'; // Import useNavigate
 const socketServerURL ='http://localhost:3009';
+
 function AuthPage({ onLogin }) {
   const [isLogin, setIsLogin] = useState(true); // Quản lý trạng thái đăng nhập/đăng ký
   const toggleAuthMode = () => setIsLogin(!isLogin); // Chuyển đổi giữa đăng nhập và đăng ký

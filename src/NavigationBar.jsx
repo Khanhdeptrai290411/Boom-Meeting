@@ -10,7 +10,7 @@ import {
   Clock,
   X 
 } from 'lucide-react';
-function NavBar({toggleMenuSidebar}) {
+function NavBar({ toggleMenuSidebar, handleLogout }) {
   return (
     <div className="w-64 bg-gray-100 dark:bg-gray-800 border-r border-gray-300 dark:border-gray-700 p-4 transition-transform transform">
       <div className="flex justify-between items-center mb-4">
@@ -34,8 +34,8 @@ function NavBar({toggleMenuSidebar}) {
             Document
           </li>
         </Link>
-        <Link to="/Logout">
-          <li className="cursor-pointer hover:bg-gray-200 dark:text-white dark:hover:bg-gray-700 p-2 rounded transition-all">
+        <Link to="/">
+          <li onClick={handleLogout} className="cursor-pointer hover:bg-gray-200 dark:text-white dark:hover:bg-gray-700 p-2 rounded transition-all">
             Logout
           </li>
         </Link>

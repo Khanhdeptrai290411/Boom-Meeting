@@ -11,14 +11,43 @@ function generateRandomCode(length) {
   }
   return result;
 }
-function MainMeeting() {
+function MainMeeting(userId) {
   const navigate = useNavigate();
   const [meetingCode, setMeetingCode] = useState('');
+  // Chuyen generate code sang server xu li 
+  const handleCreateMeeting = async () => {
+    // const generatedMeetingCode = generateRandomCode(9);
+    try {
+        const response = await fetch('http://localhost:3009/api/meeting/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ createdBy: userId }) // Add body if needed
+        });
 
-   const handleCreateMeeting = () => {
-    const generatedMeetingCode = generateRandomCode(9);
-    navigate(`/meeting/${generatedMeetingCode}`);
-  };
+        if (!response.ok) {
+            throw new Error("Failed to create meeting"); // Handle error properly
+        }
+
+        const data = await response.json();
+        if(data.message=="Create Room Successfully")
+        { 
+          const roomCode = data.newRoom.roomCode;  
+       
+          setMeetingCode(data.newRoom.roomCode);
+          navigate(`/meeting/${roomCode}`);  // Chuyển trang tới phòng vừa tạo
+
+     
+        }
+        // Use the response data as needed
+        console.log(data);
+        
+    } catch (error) {
+        console.error(error.message);
+        // Handle error display to user
+    }
+};
 
   const handleJoinMeeting = () => {
     if (meetingCode) {

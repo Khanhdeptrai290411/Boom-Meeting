@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Phone, Video, Info, Send } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
@@ -7,6 +7,16 @@ function MainChat({ selectedChat, toggleRightSidebar, socket, socketServerURL })
   const [newMessage, setNewMessage] = useState('');
   const user = JSON.parse(localStorage.getItem('user'));
   const userId = user ? user.id : null;
+
+  // Ref để tham chiếu đến container chứa tin nhắn
+  const messagesEndRef = useRef(null);
+
+  // Hàm để cuộn đến cuối cùng
+  const scrollToBottom = () => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   useEffect(() => {
     if (!socketServerURL || !selectedChat || !userId) return;
@@ -32,22 +42,32 @@ function MainChat({ selectedChat, toggleRightSidebar, socket, socketServerURL })
 
     fetchMessages();
 
-    // Tham gia vào phòng chat để nhận tin nhắn real-time
     if (socket && selectedChat) {
       socket.emit('joinChat', selectedChat.id);
 
-      // Lắng nghe sự kiện 'receiveMessage' từ server qua socket
-      socket.on('receiveMessage', (message) => {
+      const handleReceiveMessage = (message) => {
         if (message.chatId === selectedChat.id) {
-          setMessages((prevMessages) => [...prevMessages, message]);
+          setMessages((prevMessages) => {
+            if (prevMessages.some((msg) => msg.id === message.id)) {
+              return prevMessages;
+            }
+            return [...prevMessages, message];
+          });
         }
-      });
+      };
+
+      socket.on('receiveMessage', handleReceiveMessage);
 
       return () => {
-        socket.off('receiveMessage');
+        socket.off('receiveMessage', handleReceiveMessage);
       };
     }
   }, [selectedChat, socket, userId, socketServerURL]);
+
+  // Cuộn đến cuối cùng khi messages thay đổi
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const handleSendMessage = async () => {
     if (newMessage.trim() !== '' && selectedChat) {
@@ -58,7 +78,6 @@ function MainChat({ selectedChat, toggleRightSidebar, socket, socketServerURL })
       };
 
       try {
-        // Gửi tin nhắn đến server để lưu vào cơ sở dữ liệu
         const response = await fetch(`${socketServerURL}/api/chats/send`, {
           method: 'POST',
           headers: {
@@ -74,14 +93,15 @@ function MainChat({ selectedChat, toggleRightSidebar, socket, socketServerURL })
 
         const savedMessage = await response.json();
 
-        // Gửi tin nhắn qua socket để phát lại cho các client khác
         if (socket) {
           socket.emit('sendMessage', savedMessage.message);
         }
 
-        // Thêm tin nhắn vào danh sách hiển thị
-        setMessages((prevMessages) => [...prevMessages, savedMessage.message]);
-        setNewMessage(''); // Xóa nội dung đã nhập sau khi gửi thành công
+        setMessages((prevMessages) => [
+          ...prevMessages.filter((msg) => msg.id !== savedMessage.message.id),
+          savedMessage.message,
+        ]);
+        setNewMessage('');
       } catch (error) {
         console.error('Error sending message:', error);
       }
@@ -116,7 +136,7 @@ function MainChat({ selectedChat, toggleRightSidebar, socket, socketServerURL })
           <div className="flex-1 p-4 space-y-4 overflow-y-auto">
             {messages.map((msg, index) => (
               <div
-                key={index}
+                key={msg.id || index}
                 className={`flex ${msg.senderId === userId ? 'justify-end' : 'justify-start'}`}
               >
                 <div
@@ -131,6 +151,8 @@ function MainChat({ selectedChat, toggleRightSidebar, socket, socketServerURL })
                 </div>
               </div>
             ))}
+            {/* Thêm ref để cuộn đến đây */}
+            <div ref={messagesEndRef} />
           </div>
 
           <div className="p-4 border-t border-gray-300 dark:border-gray-700">
