@@ -34,7 +34,7 @@ function MainMeeting(userId) {
         if(data.message=="Create Room Successfully")
         { 
           const roomCode = data.newRoom.roomCode;  
-         
+       
           setMeetingCode(data.newRoom.roomCode);
           navigate(`/meeting/${roomCode}`);  // Chuyển trang tới phòng vừa tạo
 

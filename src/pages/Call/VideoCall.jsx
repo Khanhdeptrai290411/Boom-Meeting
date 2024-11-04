@@ -1,40 +1,53 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FaMicrophone, FaMicrophoneSlash, FaVideo, FaVideoSlash, FaDesktop, FaPhone, FaUser, FaComments } from 'react-icons/fa';
+import { FaMicrophone, FaMicrophoneSlash, FaVideo, FaVideoSlash, FaDesktop, FaPhone, FaComments ,FaTimesCircle} from 'react-icons/fa';
 import io from 'socket.io-client';
-import styled from 'styled-components';
 
 const socketServerURL = 'http://localhost:3009';
 
-const VideoCall = () => {
+const VideoCall = ({ userId }) => {
   const { roomId } = useParams();
   const navigate = useNavigate();
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
-  let localStream = null;
-  let peerConnection;
+  const socketRef = useRef(null);
+  const peerConnectionRef = useRef(null);
+  const localStreamRef = useRef(null); // Lưu trữ localStream trong useRef
+  const userIdRef = useRef(userId);
+  const [screenStream, setScreenStream] = useState(null);
 
   const [isAudioEnabled, setAudioEnabled] = useState(true);
   const [isVideoEnabled, setVideoEnabled] = useState(true);
-  const [isChatOpen, setChatOpen] = useState(false); // State to toggle chat
+  const [isScreenSharing,setIsScreenSharing]=useState(false);
+
+  const [isChatOpen, setChatOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
 
   const user = JSON.parse(localStorage.getItem('user'));
-  const userName = user ? user.username : "Guest"; 
+  const userName = user ? user.username : "Guest";
 
   useEffect(() => {
-    const socket = io(socketServerURL);
+    // Tạo kết nối socket và lưu vào ref
+    socketRef.current = io(socketServerURL);
+    const socket = socketRef.current;
+
     const servers = {
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
     };
 
     const startCall = async () => {
       try {
-        localStream = await navigator.mediaDevices.getUserMedia({ video: isVideoEnabled, audio: isAudioEnabled });
+        // Lấy media stream của người dùng và lưu vào ref
+        const localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        localStreamRef.current = localStream; // Lưu trữ localStream vào ref để dễ dàng quản lý
         localVideoRef.current.srcObject = localStream;
 
-        peerConnection = new RTCPeerConnection(servers);
+        // Tạo kết nối WebRTC
+        const peerConnection = new RTCPeerConnection(servers);
+        peerConnectionRef.current = peerConnection; // Lưu trữ peerConnection vào ref
+
+        // Thêm các track của localStream vào peerConnection
         localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
         peerConnection.onicecandidate = (event) => {
@@ -56,19 +69,14 @@ const VideoCall = () => {
     };
 
     socket.emit('join-room', roomId);
-    socket.on('chat-message', (message) => {
-      setMessages(prevMessages => [...prevMessages, message]);
+    socket.on('receiveMessage', (message) => {
+      if (message.userId !== userIdRef.current) {
+        setMessages(prevMessages => [...prevMessages, message]);
+      }
     });
 
-    const sendMessage = () => {
-      if (newMessage.trim()) {
-        socket.emit('chat-message', { text: newMessage, roomId });
-        setMessages(prevMessages => [...prevMessages, { text: newMessage, fromSelf: true }]);
-        setNewMessage('');
-      }
-    };
-
     socket.on('offer', async (offer) => {
+      const peerConnection = peerConnectionRef.current;
       await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
       const answer = await peerConnection.createAnswer();
       await peerConnection.setLocalDescription(answer);
@@ -76,10 +84,12 @@ const VideoCall = () => {
     });
 
     socket.on('answer', async (answer) => {
+      const peerConnection = peerConnectionRef.current;
       await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
     });
 
     socket.on('ice-candidate', async (candidate) => {
+      const peerConnection = peerConnectionRef.current;
       await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
     });
 
@@ -87,38 +97,86 @@ const VideoCall = () => {
 
     return () => {
       socket.disconnect();
-      if (peerConnection) {
-        peerConnection.close();
+      if (peerConnectionRef.current) {
+        peerConnectionRef.current.close();
+      }
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach(track => track.stop());
       }
     };
   }, [roomId]);
 
+  const sendMessage = () => {
+    if (newMessage.trim()) {
+      socketRef.current.emit('sendMessage', { text: newMessage, roomId, userId: userIdRef.current });
+      setMessages(prevMessages => [...prevMessages, { text: newMessage, fromSelf: true }]);
+      setNewMessage('');
+    }
+  };
+
   const toggleAudio = () => {
-    if (localStream) {
-      const audioTrack = localStream.getAudioTracks()[0];
-      if (audioTrack) {
-        audioTrack.enabled = !isAudioEnabled;
-        setAudioEnabled(!isAudioEnabled);
-      }
+    const audioTrack = localStreamRef.current?.getAudioTracks()[0];
+    if (audioTrack) {
+      audioTrack.enabled = !audioTrack.enabled;
+      setAudioEnabled(audioTrack.enabled);
     }
   };
 
   const toggleVideo = () => {
-    if (localStream) {
-      const videoTrack = localStream.getVideoTracks()[0];
-      if (videoTrack) {
-        videoTrack.enabled = !isVideoEnabled;
-        setVideoEnabled(!isVideoEnabled);
-      }
+    const videoTrack = localStreamRef.current?.getVideoTracks()[0];
+    if (videoTrack) {
+      videoTrack.enabled = !videoTrack.enabled;
+      setVideoEnabled(videoTrack.enabled);
     }
   };
-
-  const endCall = () => {
-    if (peerConnection) {
-      peerConnection.close();
+  const toggleScreenShare = async () => {
+    if (!isScreenSharing) {
+      try {
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+  
+        // Kiểm tra nếu screenStream là MediaStream
+        if (screenStream instanceof MediaStream) {
+          const screenTrack = screenStream.getVideoTracks()[0];
+  
+          const sender = peerConnectionRef.current.getSenders().find(s => s.track.kind === 'video');
+          if (sender) {
+            sender.replaceTrack(screenTrack);
+          }
+  
+          localVideoRef.current.srcObject = screenStream; // Hiển thị màn hình chia sẻ
+  
+          // Dừng chia sẻ màn hình khi người dùng dừng screenTrack
+          screenTrack.onended = () => {
+            stopScreenShare();
+          };
+  
+          setIsScreenSharing(true);
+        } else {
+          console.warn("No valid MediaStream found for screen sharing.");
+        }
+      } catch (error) {
+        console.error("Error sharing screen:", error);
+      }
+    } else {
+      stopScreenShare();
     }
-    if (localStream) {
-      localStream.getTracks().forEach(track => track.stop());
+  };
+  const stopScreenShare= async ()=>{
+    const videoTrack=localStreamRef.current.getVideoTracks()[0];
+    const sender=peerConnectionRef.current.getSenders().find(s=>s.track.kind==='video');
+    if(sender){
+      sender.replaceTrack(videoTrack);
+
+    }
+    localVideoRef.current.srcObject=localStreamRef.current;
+    setIsScreenSharing(false);
+  }
+  const endCall = () => {
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+    }
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(track => track.stop());
     }
     navigate('/chat');
   };
@@ -127,7 +185,7 @@ const VideoCall = () => {
     <div className="flex h-screen w-full bg-gray-800 text-white relative">
       <div className="flex flex-1">
         {/* Video Section */}
-        <div className="flex w-2/3 flex-col items-center justify-center">
+        <div className={`flex ${isChatOpen ? "w-2/3" : "w-full"} flex-col items-center justify-center`}>
           <div className="flex w-full h-full">
             <div className="w-1/2 relative">
               <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover border border-white rounded-lg" />
@@ -174,8 +232,10 @@ const VideoCall = () => {
         <button onClick={toggleVideo} className="bg-gray-600 p-3 rounded-full hover:bg-gray-700">
           {isVideoEnabled ? <FaVideo /> : <FaVideoSlash />}
         </button>
-        <button className="bg-gray-600 p-3 rounded-full hover:bg-gray-700">
-          <FaDesktop />
+        <button onClick={toggleScreenShare} className="bg-gray-600 p-3 rounded-full hover:bg-gray-700">
+      
+        
+        
         </button>
         <button onClick={() => setChatOpen(!isChatOpen)} className="bg-gray-600 p-3 rounded-full hover:bg-gray-700">
           <FaComments />

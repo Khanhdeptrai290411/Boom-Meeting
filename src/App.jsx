@@ -484,7 +484,9 @@ const renderTabContent = () => {
               <Navigate to="/" replace /> // Chuyển hướng đến trang đăng nhập nếu chưa đăng nhập
             )} />
             <Route path="/meeting/:roomId" element={isAuthenticated ? (
-                <VideoCall />
+                <VideoCall 
+                userId={userId}
+                />
               ) : (
                 <Navigate to="/" replace />
               )} />
