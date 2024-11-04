@@ -102,6 +102,7 @@ function RegisterForm() {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const navigate = useNavigate(); // Khởi tạo useNavigate
+  const socketServerURL ='http://localhost:3009'
 
   const handleSubmit = async (e) => {
     e.preventDefault();

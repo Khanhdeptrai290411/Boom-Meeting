@@ -477,6 +477,7 @@ const renderTabContent = () => {
                 isDarkMode={isDarkMode}
                 toggleDarkMode={toggleDarkMode}
                 userName = {userName}
+                userId={userId}
               />
               
             ) : (

@@ -3,7 +3,7 @@ import LeftSideBar from './LeftSideBarM';
 import MainMeeting from './MainMeeting';
 
 function MeetingPage({ toggleMenuSidebar,isDarkMode,
-    toggleDarkMode,userName }) {
+    toggleDarkMode,userName,userId }) {
   // State để lưu trữ trạng thái của sidebar, sử dụng từ App
   const [showMenuSidebar, setShowMenuSidebar] = useState(false);
   // Hàm này sẽ toggle trạng thái sidebar
@@ -22,7 +22,8 @@ function MeetingPage({ toggleMenuSidebar,isDarkMode,
         />
 
       {/* Main Meeting Area */}
-      <MainMeeting />
+      <MainMeeting 
+      userId={userId}/>
     </>
   );
 }
