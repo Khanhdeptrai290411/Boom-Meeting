@@ -15,7 +15,7 @@ function MainMeeting(userId) {
   const navigate = useNavigate();
   const [meetingCode, setMeetingCode] = useState('');
   // Chuyen generate code sang server xu li 
-  const handleCreateMeeting = async () => {
+  const  handleCreateMeeting = async () => {
     // const generatedMeetingCode = generateRandomCode(9);
     try {
         const response = await fetch('http://localhost:3009/api/meeting/create', {

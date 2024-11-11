@@ -1,74 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Phone, Video, Info, Send } from 'lucide-react';
+import { Phone, Video, Info, Send,File,Paperclip  } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
-function MainChat({ selectedChat, toggleRightSidebar, socket, socketServerURL }) {
+function MainChat({ selectedChat, toggleRightSidebar, socket, socketServerURL, }) {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const user = JSON.parse(localStorage.getItem('user'));
   const userId = user ? user.id : null;
-
+  const fileInputRef = useRef(null); // Thêm ref để kết nối với input file
+  
   // Ref để tham chiếu đến container chứa tin nhắn
   const messagesEndRef = useRef(null);
-
-  // Hàm để cuộn đến cuối cùng
-  const scrollToBottom = () => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+  const handleAttachFile = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click(); // Mở cửa sổ chọn file khi nhấn vào nút "kẹp giấy"
     }
   };
-
-  useEffect(() => {
-    if (!socketServerURL || !selectedChat || !userId) return;
-
-    const fetchMessages = async () => {
-      try {
-        const response = await fetch(`${socketServerURL}/api/chats/${selectedChat.id}/messages`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch messages');
-        }
-
-        const data = await response.json();
-        setMessages(data);
-      } catch (error) {
-        console.error('Error fetching messages:', error);
-      }
-    };
-
-    fetchMessages();
-
-    if (socket && selectedChat) {
-      socket.emit('joinChat', selectedChat.id);
-
-      const handleReceiveMessage = (message) => {
-        if (message.chatId === selectedChat.id) {
-          setMessages((prevMessages) => {
-            if (prevMessages.some((msg) => msg.id === message.id)) {
-              return prevMessages;
-            }
-            return [...prevMessages, message];
-          });
-        }
-      };
-
-      socket.on('receiveMessage', handleReceiveMessage);
-
-      return () => {
-        socket.off('receiveMessage', handleReceiveMessage);
-      };
-    }
-  }, [selectedChat, socket, userId, socketServerURL]);
-
-  // Cuộn đến cuối cùng khi messages thay đổi
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
   const handleSendMessage = async () => {
     if (newMessage.trim() !== '' && selectedChat) {
       const message = {
@@ -107,6 +54,130 @@ function MainChat({ selectedChat, toggleRightSidebar, socket, socketServerURL })
       }
     }
   };
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (file && selectedChat) {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('chatId', selectedChat.id);
+      formData.append('senderId', userId);
+  
+      try {
+        const response = await fetch(`${socketServerURL}/api/chats/upload`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+          body: formData,
+        });
+  
+        if (!response.ok) {
+          throw new Error('Failed to upload file');
+        }
+  
+        const savedMessage = await response.json();
+  
+        if (savedMessage && savedMessage.message) {
+          // Gửi tin nhắn qua socket để những người khác nhận được tin nhắn
+          if (socket) {
+            socket.emit('sendMessage', savedMessage.message);
+          }
+  
+          // Cập nhật state ngay lập tức cho người gửi
+          setMessages((prevMessages) => [...prevMessages, savedMessage.message]);
+        }
+      } catch (error) {
+        console.error('Error uploading file:', error);
+      }
+    }
+  };
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  // Hàm để cuộn đến cuối cùng
+  const scrollToBottom = () => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  useEffect(() => {
+    if (!socketServerURL || !selectedChat || !userId) return;
+  
+    const fetchMessages = async () => {
+      try {
+        const response = await fetch(`${socketServerURL}/api/chats/${selectedChat.id}/messages`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+        });
+  
+        if (!response.ok) {
+          throw new Error('Failed to fetch messages');
+        }
+  
+        const data = await response.json();
+        console.log('Fetched messages from API:', data);
+        setMessages(data);
+      } catch (error) {
+        console.error('Error fetching messages:', error);
+      }
+    };
+  
+    fetchMessages();
+  }, [selectedChat, socketServerURL, userId]);
+  
+  
+  useEffect(() => {
+    if (socket && selectedChat) {
+      socket.emit('joinChat', selectedChat.id);
+  
+      const handleReceiveMessage = (message) => {
+        console.log('Received message:', message);
+        console.log('this is',message.chatId);
+        console.log('day la',selectedChat.id);
+        if (message.chatId == selectedChat.id) {
+          // Nếu người gửi là chính mình thì không cần cập nhật tin nhắn từ sự kiện `receiveMessage`
+          if (message.senderId == userId) {
+            return;
+          }
+  
+          setMessages((prevMessages) => {
+            if (prevMessages.some((msg) => msg.id == message.id)) {
+              return prevMessages;
+            }
+            return [...prevMessages, message];
+          });
+        }
+      };
+  
+      socket.on('receiveMessage', handleReceiveMessage);
+  
+      return () => {
+        socket.off('receiveMessage', handleReceiveMessage);
+      };
+    }
+  }, [selectedChat, socket]);
+  
+  
+  
+  
+  
+  
+
+  // Cuộn đến cuối cùng khi messages thay đổi
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  
 
   return (
     <div className="flex-1 flex flex-col">
@@ -134,33 +205,88 @@ function MainChat({ selectedChat, toggleRightSidebar, socket, socketServerURL })
           </div>
 
           <div className="flex-1 p-4 space-y-4 overflow-y-auto">
-            {messages.map((msg, index) => (
-              <div
-                key={msg.id || index}
-                className={`flex ${msg.senderId === userId ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`p-3 rounded-lg max-w-xs ${
-                    msg.senderId === userId ? 'bg-blue-500 text-white' : 'bg-gray-200 text-black'
-                  }`}
+  {messages.map((msg, index) => (
+    <div
+      key={msg.id || index}
+      className={`flex ${msg.senderId == userId ? 'justify-end' : 'justify-start'}`}
+    >
+      <div
+        className={`p-3 rounded-lg max-w-xs ${
+          msg.senderId == userId ? 'bg-blue-500 text-white' : 'bg-gray-200 text-black'
+        }`}
+      >
+        {msg.filePath ? (
+          msg.filePath.endsWith('.jpg') ||
+          msg.filePath.endsWith('.jpeg') ||
+          msg.filePath.endsWith('.png') ||
+          msg.filePath.endsWith('.gif') ? (
+            <img
+              src={`${socketServerURL}/${msg.filePath}`}
+              alt="Sent"
+              className="max-w-full rounded"
+            />
+          ) : (
+            <div className="flex flex-col space-y-2">
+              <p className="text-sm font-semibold mb-1">{msg.filePath.split('/').pop()}</p>
+              <div className="flex items-center space-x-2">
+                <a
+                  href={`${socketServerURL}/${msg.filePath}`}
+                  download
+                  className="text-gray-500 hover:text-gray-700 transition-colors"
                 >
-                  <p className="text-sm">{msg.content}</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {new Date(msg.timestamp).toLocaleTimeString()}
-                  </p>
-                </div>
+                  {/* Nút tải xuống */}
+                </a>
+                <a
+                  href={`${socketServerURL}/${msg.filePath}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-500 hover:text-gray-700 transition-colors"
+                >
+                  {/* Nút xem file */}
+                </a>
               </div>
-            ))}
-            {/* Thêm ref để cuộn đến đây */}
-            <div ref={messagesEndRef} />
-          </div>
+            </div>
+          )
+        ) : (
+          <p className="text-sm">{msg.content}</p>
+        )}
+        <p className="text-xs text-gray-500 mt-1">
+          {new Date(msg.timestamp).toLocaleTimeString()}
+        </p>
+      </div>
+    </div>
+  ))}
+  <div ref={messagesEndRef} />
+</div>
+
+
+
+
+
 
           <div className="p-4 border-t border-gray-300 dark:border-gray-700">
             <div className="flex items-center">
+              <button
+                onClick={handleAttachFile}
+                className="p-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full shadow-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-opacity mr-2"
+              >
+                <Paperclip className="w-5 h-5" />
+              </button>
+              <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+                onChange={handleFileChange}
+              />
               <input
                 type="text"
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSendMessage();
+                  }
+                }}
                 placeholder="Type a message..."
                 className="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
               />

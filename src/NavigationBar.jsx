@@ -29,9 +29,9 @@ function NavBar({ toggleMenuSidebar, handleLogout }) {
             Meeting
           </li>
         </Link>
-        <Link to="/document">
+        <Link to="/profile">
           <li className="cursor-pointer hover:bg-gray-200 dark:text-white dark:hover:bg-gray-700 p-2 rounded transition-all">
-            Document
+            Profile
           </li>
         </Link>
         <Link to="/">

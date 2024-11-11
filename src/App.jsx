@@ -24,7 +24,7 @@ import VideoCall from './pages/Call/VideoCall';
 import MeetingRoom from './pages/Meeting/MeetingRoom';
 import MeetingPage from './pages/Meeting/MeetingPage';
 import ReactLogo from './assets/ok.jpg'; // Đảm bảo đường dẫn chính xác
-import DocumentsPage from './pages/Documents/DocumentsPage';
+import ProfilePage from './pages/Documents/ProfilePage';
 import Auth from './pages/Login/Auth';
 import io from 'socket.io-client'; // Import socket.io-client
 
@@ -251,46 +251,36 @@ const cancelFriendRequest = async (friendId) => {
   
 
 
-  const fetchFriendRequests = async () => {
-    try {
-      const user = JSON.parse(localStorage.getItem('user'));
-      const userId = user ? user.id : null;
-  
-      if (!userId) {
-        throw new Error('User is not authenticated');
-      }
-  
-      const response = await fetch(`${socketServerURL}/friends/requests?userId=${userId}`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-  
-      if (!response.ok) {
-        throw new Error('Failed to fetch friend requests');
-      }
-  
-      const requests = await response.json();
-      console.log('Fetched friend requests:', requests); // Kiểm tra dữ liệu trả về từ server
-  
-      // Kiểm tra nếu requests hợp lệ và set lại chats state
-      if (Array.isArray(requests)) {
-        setChats(requests.map(req => ({
-          id: req.id,
-          user_id: req.user_id,
-          friend_id: req.friend_id,
-          name: req.userDetail ? req.userDetail.username : 'Unknown',
-          status: req.status,
+const fetchFriendRequests = async () => {
+  try {
+    const response = await fetch(`${socketServerURL}/friends/requests?userId=${userId}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
+      },
+    });
+
+    if (!response.ok) throw new Error('Failed to fetch friend requests');
+
+    const requests = await response.json();
+    console.log('Fetched friend requests:', requests);
+
+    if (Array.isArray(requests)) {
+      setChats(requests.map(req => ({
+        id: req.id,
+        user_id: req.user_id,
+        friend_id: req.friend_id,
+        name: req.userDetail ? req.userDetail.username : 'Unknown',
+        status: req.status,
       })));
-      
-      } else {
-        console.error('Invalid friend requests data:', requests);
-      }
-    } catch (error) {
-      console.error('Error fetching friend requests:', error);
+    } else {
+      console.error('Invalid friend requests data:', requests);
     }
-  };
+  } catch (error) {
+    console.error('Error fetching friend requests:', error);
+  }
+};
+
   
 useEffect(() => {
   fetchFriendRequests();
@@ -447,9 +437,28 @@ const handleAccept = async (id) => {
 
   
   const handleLogout = () => {
+    // Xóa token và thông tin người dùng khỏi local storage
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
+  
+    // Đặt lại các state về trạng thái ban đầu
     setIsAuthenticated(false);
+    setFriends([]);
+    setChats([]);
+    setSelectedChat(null);
+    setSocket(null);
+  
+    // Chuyển hướng người dùng đến trang đăng nhập
+    navigate('/');
   };
+  
+  useEffect(() => {
+    // Gọi hàm fetchChatMembers nếu `userId` và `socket` có giá trị hợp lệ
+    if (isAuthenticated && userId && socket) {
+      fetchChatMembers();
+    }
+  }, [userId, socket, isAuthenticated]);
+  
   
   
   
@@ -462,45 +471,72 @@ useEffect(() => {
 }, [chats]);
 
 // Lấy danh sách thành viên của các cuộc trò chuyện
+useEffect(() => {
+  if (socket) {
+    socket.on('groupCreated', (data) => {
+      console.log('New group created:', data);
 
-  const fetchChatMembers = async () => {
-    if (!userId || !socket) {
-      console.error('Invalid User ID or socket connection not established');
-      return;
-    }
+      // Kiểm tra xem group có tồn tại trong friends chưa
+      setFriends((prevFriends) => {
+        const isAlreadyInList = prevFriends.some(friend => friend.id === data.chat.id);
+        if (isAlreadyInList) return prevFriends; // Nếu đã tồn tại, không thêm lại
 
-    try {
-      // Gọi API để lấy những cuộc trò chuyện của user hiện tại
-      const response = await fetch(`${socketServerURL}/api/chats/chatmembers/list?userId=${userId}`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
+        return [
+          ...prevFriends,
+          {
+            id: data.chat.id,
+            name: data.chat.name,
+            isGroup: true,
+          }
+        ];
       });
+    });
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch chat members');
-      }
+    return () => {
+      socket.off('groupCreated');
+    };
+  }
+}, [socket]);
 
-      const chatMembers = await response.json();
 
-      // Gán dữ liệu vào `friends` hoặc `selectedChat`
-      setFriends(chatMembers.map(member => ({
-        id: member.chatId, // Sử dụng chatId thay vì userId để tham chiếu tới cuộc trò chuyện
-        userId: member.userId,
-        name: member.user.username,
-        email: member.user.email,
-      })));
-    } catch (error) {
-      console.error('Error fetching chat members:', error);
+const fetchChatMembers = async () => {
+  if (!userId || !socket) {
+    console.error('Invalid User ID or socket connection not established');
+    return;
+  }
+
+  try {
+    const response = await fetch(`${socketServerURL}/api/chats/chatmembers/list?userId=${userId}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
+      },
+    });    
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch chat members');
     }
-  };
+
+    const chats = await response.json();
+
+    setFriends(chats.map(chat => ({
+      id: chat.id,
+      name: chat.name,
+      email: chat.type === 'private' ? chat.email : '', // Chỉ hiển thị email nếu là chat cá nhân
+      isGroup: chat.type === 'group', // Đặt isGroup dựa trên type
+    })));
+  } catch (error) {
+    console.error('Error fetching chat members:', error);
+  }
+};
+
 useEffect(() => {
   // Gọi hàm fetchChatMembers nếu `userId` và `socket` có giá trị hợp lệ
   if (userId && socket) {
     fetchChatMembers();
   }
 }, [userId, socket]);
+
 
 
 
@@ -642,9 +678,8 @@ const renderTabContent = () => {
 
 
 
-        case 'messages':
+    case 'messages':
       default:
-        // Hiển thị danh sách bạn bè
         const filteredFriends = friends.filter(friend =>
           friend.name.toLowerCase().includes(searchQuery.toLowerCase())
         );
@@ -664,7 +699,9 @@ const renderTabContent = () => {
                 </Avatar>
                 <div className="flex-1">
                   <div className="flex justify-between items-center">
-                    <h2 className="font-semibold dark:text-white">{friend.name}</h2>
+                    <h2 className="font-semibold dark:text-white">
+                      {friend.isGroup ? friend.name : friend.name}
+                    </h2>
                     <span className="text-sm text-gray-500 dark:text-gray-400">{friend.email}</span>
                   </div>
                 </div>
@@ -672,8 +709,9 @@ const renderTabContent = () => {
             ))}
           </div>
         );
-          
-    }
+      
+            
+      }
 };
 
   return (
@@ -719,6 +757,7 @@ const renderTabContent = () => {
                 setSearchQuery={setSearchQuery} // Truyền setSearchQuery vào ChatLayout
                 socket={socket} // Truyền socket xuống ChatLayout
                 socketServerURL={socketServerURL}
+                
                 />
               ) : (
                 <Navigate to="/" replace /> // Chuyển hướng đến trang đăng nhập nếu chưa đăng nhập
@@ -741,8 +780,8 @@ const renderTabContent = () => {
               ) : (
                 <Navigate to="/" replace />
               )} />
-            <Route path="/document" element={ isAuthenticated ? (
-              <DocumentsPage
+            <Route path="/profile" element={ isAuthenticated ? (
+              <ProfilePage
                 toggleMenuSidebar={toggleMenuSidebar}
                 isDarkMode={isDarkMode}
                 toggleDarkMode={toggleDarkMode}

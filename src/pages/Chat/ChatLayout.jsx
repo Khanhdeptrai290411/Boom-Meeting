@@ -21,7 +21,7 @@ function ChatLayout({
   setSearchQuery,
   sendFriendRequest,
   socket,
-  socketServerURL
+  socketServerURL,
 }) {
   return (
     <>
@@ -38,6 +38,7 @@ function ChatLayout({
           setSearchQuery={setSearchQuery} // Truyền setSearchQuery
           sendFriendRequest={sendFriendRequest}
           socketServerURL={socketServerURL}
+          socket={socket}
         />
 
       {/* Main Chat Area */}
