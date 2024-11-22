@@ -140,31 +140,33 @@ function MainChat({ selectedChat, toggleRightSidebar, socket, socketServerURL, }
       socket.emit('joinChat', selectedChat.id);
   
       const handleReceiveMessage = (message) => {
-        console.log('Received message:', message);
-        console.log('this is',message.chatId);
-        console.log('day la',selectedChat.id);
-        if (message.chatId == selectedChat.id) {
-          // Nếu người gửi là chính mình thì không cần cập nhật tin nhắn từ sự kiện `receiveMessage`
-          if (message.senderId == userId) {
-            return;
-          }
+        console.log('Received message:', message); // Log kiểm tra tin nhắn nhận được từ server
   
+        // Chỉ xử lý tin nhắn thuộc về cuộc trò chuyện hiện tại
+        if (message.chatId === selectedChat.id) {
           setMessages((prevMessages) => {
-            if (prevMessages.some((msg) => msg.id == message.id)) {
+            // Kiểm tra tin nhắn trùng lặp bằng `id`
+            const isDuplicate = prevMessages.some((msg) => msg.id === message.id);
+            if (isDuplicate) {
               return prevMessages;
             }
+  
+            // Cập nhật danh sách tin nhắn
             return [...prevMessages, message];
           });
         }
       };
   
+      // Lắng nghe sự kiện `receiveMessage`
       socket.on('receiveMessage', handleReceiveMessage);
   
+      // Cleanup khi component unmount hoặc `selectedChat` thay đổi
       return () => {
         socket.off('receiveMessage', handleReceiveMessage);
       };
     }
   }, [selectedChat, socket]);
+  
   
   
   
@@ -208,49 +210,57 @@ function MainChat({ selectedChat, toggleRightSidebar, socket, socketServerURL, }
   {messages.map((msg, index) => (
     <div
       key={msg.id || index}
-      className={`flex ${msg.senderId == userId ? 'justify-end' : 'justify-start'}`}
+      className={`flex items-start ${msg.senderId === userId ? 'justify-end' : 'justify-start'}`}
     >
-      <div
-        className={`p-3 rounded-lg max-w-xs ${
-          msg.senderId == userId ? 'bg-blue-500 text-white' : 'bg-gray-200 text-black'
-        }`}
-      >
-        {msg.filePath ? (
-          msg.filePath.endsWith('.jpg') ||
-          msg.filePath.endsWith('.jpeg') ||
-          msg.filePath.endsWith('.png') ||
-          msg.filePath.endsWith('.gif') ? (
-            <img
-              src={`${socketServerURL}/${msg.filePath}`}
-              alt="Sent"
-              className="max-w-full rounded"
-            />
-          ) : (
-            <div className="flex flex-col space-y-2">
-              <p className="text-sm font-semibold mb-1">{msg.filePath.split('/').pop()}</p>
-              <div className="flex items-center space-x-2">
-                <a
-                  href={`${socketServerURL}/${msg.filePath}`}
-                  download
-                  className="text-gray-500 hover:text-gray-700 transition-colors"
-                >
-                  {/* Nút tải xuống */}
-                </a>
-                <a
-                  href={`${socketServerURL}/${msg.filePath}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-gray-500 hover:text-gray-700 transition-colors"
-                >
-                  {/* Nút xem file */}
-                </a>
-              </div>
-            </div>
-          )
-        ) : (
-          <p className="text-sm">{msg.content}</p>
+      {/* Avatar và nội dung tin nhắn */}
+      {msg.senderId !== userId && (
+        <div className="mr-3">
+          <Avatar className="w-10 h-10 mr-3 dark:shadow-gray-700 dark:text-white shadow-md">
+            <AvatarImage src={`/placeholder.svg?height=40&width=40`} alt={msg.sender?.username || 'U'} />
+            <AvatarFallback>{msg.sender?.username?.charAt(0) || 'U'}</AvatarFallback>
+          </Avatar>
+        </div>
+      )}
+      <div>
+        {/* Tên người gửi */}
+        {msg.senderId !== userId && (
+          <p className="text-sm font-medium text-gray-700 dark:text-gray-400 mb-1">
+            {msg.sender?.username || 'Unknown'}
+          </p>
         )}
-        <p className="text-xs text-gray-500 mt-1">
+        {/* Nội dung tin nhắn */}
+        <div
+          className={`p-3 rounded-xl max-w-xs shadow-md ${
+            msg.senderId === userId
+              ? 'bg-blue-500 text-white rounded-br-none'
+              : 'bg-gray-200 text-black rounded-bl-none'
+          }`}
+        >
+          {msg.filePath ? (
+            msg.filePath.endsWith('.jpg') ||
+            msg.filePath.endsWith('.jpeg') ||
+            msg.filePath.endsWith('.png') ||
+            msg.filePath.endsWith('.gif') ? (
+              <img
+                src={`${socketServerURL}/${msg.filePath}`}
+                alt="Sent"
+                className="max-w-full rounded"
+              />
+            ) : (
+              <a
+                href={`${socketServerURL}/${msg.filePath}`}
+                download
+                className="text-sm font-semibold underline text-blue-700"
+              >
+                {msg.filePath.split('\\').pop()}
+              </a>
+            )
+          ) : (
+            <p>{msg.content}</p>
+          )}
+        </div>
+        {/* Thời gian */}
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
           {new Date(msg.timestamp).toLocaleTimeString()}
         </p>
       </div>
@@ -258,6 +268,8 @@ function MainChat({ selectedChat, toggleRightSidebar, socket, socketServerURL, }
   ))}
   <div ref={messagesEndRef} />
 </div>
+
+
 
 
 
