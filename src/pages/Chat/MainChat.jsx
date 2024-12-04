@@ -66,7 +66,7 @@ function MainChat({ selectedChat, toggleRightSidebar, socket, socketServerURL, }
         const response = await fetch(`${socketServerURL}/api/chats/upload`, {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            Authorization: `Bearer ${localStorage.getItem('token')}`, // Token cần phải có
           },
           body: formData,
         });
@@ -76,21 +76,30 @@ function MainChat({ selectedChat, toggleRightSidebar, socket, socketServerURL, }
         }
   
         const savedMessage = await response.json();
-  
         if (savedMessage && savedMessage.message) {
+          const message = {
+            chatId: selectedChat.id,
+            senderId: userId,
+            content: 'Sent an image', // Nội dung tin nhắn
+            filePath: savedMessage.message.filePath, // Đường dẫn file
+            timestamp: new Date().toISOString(), // Thêm timestamp
+          };
+  
           // Gửi tin nhắn qua socket để những người khác nhận được tin nhắn
           if (socket) {
-            socket.emit('sendMessage', savedMessage.message);
+            socket.emit('sendMessage', message);
           }
   
           // Cập nhật state ngay lập tức cho người gửi
-          setMessages((prevMessages) => [...prevMessages, savedMessage.message]);
+          setMessages((prevMessages) => [...prevMessages, message]);
         }
       } catch (error) {
         console.error('Error uploading file:', error);
       }
     }
   };
+  
+  
   
   
   
@@ -143,7 +152,7 @@ function MainChat({ selectedChat, toggleRightSidebar, socket, socketServerURL, }
         console.log('Received message:', message); // Log kiểm tra tin nhắn nhận được từ server
   
         // Chỉ xử lý tin nhắn thuộc về cuộc trò chuyện hiện tại
-        if (message.chatId === selectedChat.id) {
+        if (message.chatId == selectedChat.id) {
           setMessages((prevMessages) => {
             // Kiểm tra tin nhắn trùng lặp bằng `id`
             const isDuplicate = prevMessages.some((msg) => msg.id === message.id);
@@ -212,7 +221,6 @@ function MainChat({ selectedChat, toggleRightSidebar, socket, socketServerURL, }
       key={msg.id || index}
       className={`flex items-start ${msg.senderId === userId ? 'justify-end' : 'justify-start'}`}
     >
-      {/* Avatar và nội dung tin nhắn */}
       {msg.senderId !== userId && (
         <div className="mr-3">
           <Avatar className="w-10 h-10 mr-3 dark:shadow-gray-700 dark:text-white shadow-md">
@@ -222,13 +230,12 @@ function MainChat({ selectedChat, toggleRightSidebar, socket, socketServerURL, }
         </div>
       )}
       <div>
-        {/* Tên người gửi */}
         {msg.senderId !== userId && (
           <p className="text-sm font-medium text-gray-700 dark:text-gray-400 mb-1">
             {msg.sender?.username || 'Unknown'}
           </p>
         )}
-        {/* Nội dung tin nhắn */}
+
         <div
           className={`p-3 rounded-xl max-w-xs shadow-md ${
             msg.senderId === userId
@@ -246,20 +253,36 @@ function MainChat({ selectedChat, toggleRightSidebar, socket, socketServerURL, }
                 alt="Sent"
                 className="max-w-full rounded"
               />
+            ) : msg.filePath.endsWith('.pdf') ? (
+              <a
+                href={`${socketServerURL}/${msg.filePath}`}
+                download
+                className="text-sm font-semibold underline text-blue-700"
+              >
+                {msg.filePath.split('/').pop()}
+              </a>
+            ) : msg.filePath.endsWith('.docx') ? (
+              <a
+                href={`${socketServerURL}/${msg.filePath}`}
+                download
+                className="text-sm font-semibold underline text-blue-700"
+              >
+                {msg.filePath.split('/').pop()}
+              </a>
             ) : (
               <a
                 href={`${socketServerURL}/${msg.filePath}`}
                 download
                 className="text-sm font-semibold underline text-blue-700"
               >
-                {msg.filePath.split('\\').pop()}
+                Download {msg.filePath.split('.').pop().toUpperCase()}
               </a>
             )
           ) : (
             <p>{msg.content}</p>
           )}
         </div>
-        {/* Thời gian */}
+        
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
           {new Date(msg.timestamp).toLocaleTimeString()}
         </p>
@@ -268,6 +291,7 @@ function MainChat({ selectedChat, toggleRightSidebar, socket, socketServerURL, }
   ))}
   <div ref={messagesEndRef} />
 </div>
+
 
 
 

@@ -52,8 +52,9 @@ function ChatLayout({
       {/* Right Sidebar */}
       {showRightSidebar && (
         <RightSidebar
-          selectedChat={selectedChat}
-          
+        socket={socket}
+        socketServerURL={socketServerURL}
+        selectedChat={selectedChat}  
         />
       )}
     </>
