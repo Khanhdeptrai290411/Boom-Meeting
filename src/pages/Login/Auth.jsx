@@ -1,25 +1,34 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom'; // Import useNavigate
+// import ForgotPasswordForm from '../../components/ui/forgetpassword'
 const socketServerURL ='http://localhost:3009';
 
 function AuthPage({ onLogin }) {
   const [isLogin, setIsLogin] = useState(true); // Quản lý trạng thái đăng nhập/đăng ký
   const toggleAuthMode = () => setIsLogin(!isLogin); // Chuyển đổi giữa đăng nhập và đăng ký
-
+  const [isForgotPassword,setIsForgotPassword] = useState(false)
+  const toggleForgetPasswordMode=()=>setIsForgotPassword(!isForgotPassword)
   return (
     <div className="w-full p-6 space-y-6 bg-white dark:bg-gray-800 shadow-md rounded-lg" style={{ margin: 'auto', width: '400px' }}>
       <h2 className="text-center text-2xl font-bold text-gray-800 dark:text-white">
-        {isLogin ? 'Login' : 'Register'}
+        {isForgotPassword ? 'Forgot Password' : isLogin ? 'Login' : 'Register'}
       </h2>
 
-      {isLogin ? <LoginForm onLogin={onLogin} /> : <RegisterForm />}
-
-      <p className="text-center text-sm text-gray-600 dark:text-gray-400">
-        {isLogin ? "Don't have an account?" : 'Already have an account?'}{' '}
-        <button onClick={toggleAuthMode} className="font-medium text-blue-500 hover:underline">
-          {isLogin ? 'Register' : 'Login'}
-        </button>
-      </p>
+      {isForgotPassword ? <ForgotPasswordForm/> : isLogin ? <LoginForm onLogin={onLogin} /> : <RegisterForm />}
+      <p className='text-center text-sm texxt-gray-600 dark'>
+        Forget Password 
+        
+        <button onClick={toggleForgetPasswordMode}>Forget Password</button>
+        </p>
+        {isForgotPassword? <></> : 
+          <p className="text-center text-sm text-gray-600 dark:text-gray-400">
+          {isLogin ? "Don't have an account?" : 'Already have an account?'}{' '}
+          <button onClick={toggleAuthMode} className="font-medium text-blue-500 hover:underline">
+            {isLogin ? 'Register' : 'Login'}
+          </button>
+         </p>
+        }
+      
     </div>
   );
 }
@@ -177,5 +186,84 @@ function RegisterForm() {
     </form>
   );
 }
+
+function ForgotPasswordForm() {
+  const [email, setEmail] = useState('');
+  const [message, setMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    // Kiểm tra email hợp lệ
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setMessage('Please enter a valid email address.');
+      return;
+    }
+
+    setIsLoading(true); // Hiển thị trạng thái tải
+    setMessage('');
+
+    try {
+      const response = await fetch(`${socketServerURL}/api/forget-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send reset password email.');
+      }
+
+      setMessage('Reset password email sent! Please check your inbox.');
+    } catch (error) {
+      console.error('Error during forgot password:', error);
+      setMessage('Failed to send reset password email. Please try again.');
+    } finally {
+      setIsLoading(false); // Kết thúc trạng thái tải
+    }
+  };
+
+  return (
+    <form className="space-y-4" onSubmit={handleSubmit}>
+      {message && (
+        <p
+          className={`text-sm ${
+            message.includes('sent') ? 'text-green-500' : 'text-red-500'
+          }`}
+        >
+          {message}
+        </p>
+      )}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          Email
+        </label>
+        <input
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="w-full px-4 py-2 mt-1 border rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+        />
+      </div>
+      <button
+        type="submit"
+        disabled={isLoading}
+        className={`w-full px-4 py-2 text-white bg-blue-500 rounded-lg ${
+          isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600'
+        }`}
+      >
+        {isLoading ? 'Sending...' : 'Send Reset Link'}
+      </button>
+    </form>
+  );
+}
+
+
+
 
 export default AuthPage;
