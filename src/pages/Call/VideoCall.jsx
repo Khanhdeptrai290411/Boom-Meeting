@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FaMicrophone, FaMicrophoneSlash, FaVideo, FaVideoSlash, FaDesktop, FaPhone, FaComments ,FaTimesCircle} from 'react-icons/fa';
+import { FaMicrophone, FaMicrophoneSlash, FaVideo, FaVideoSlash, FaDesktop, FaPhone, FaComments, FaClipboard,FaTimesCircle} from 'react-icons/fa';
+
 import io from 'socket.io-client';
 
 const socketServerURL = 'http://localhost:3009';
@@ -23,7 +24,8 @@ const VideoCall = ({ userId }) => {
   const [isChatOpen, setChatOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
-
+  const [copied, setCopied] = useState(false);
+  const [showRoomCode, setShowRoomCode] = useState(false);
   const user = JSON.parse(localStorage.getItem('user'));
   const userName = user ? user.username : "Guest";
 
@@ -69,11 +71,12 @@ const VideoCall = ({ userId }) => {
     };
 
     socket.emit('join-room', roomId);
-    socket.on('receiveMessage', (message) => {
+    socket.on('receiveMessageMeeting', (message) => {
       if (message.userId !== userIdRef.current) {
-        setMessages(prevMessages => [...prevMessages, message]);
+        setMessages((prevMessages) => [...prevMessages, message]);
       }
     });
+    
 
     socket.on('offer', async (offer) => {
       const peerConnection = peerConnectionRef.current;
@@ -105,14 +108,29 @@ const VideoCall = ({ userId }) => {
       }
     };
   }, [roomId]);
+  const copyRoomId = () => {
+    navigator.clipboard.writeText(roomId).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 3000);
+    }).catch((err) => {
+      console.error('Failed to copy room code:', err);
+    });
+  };
 
   const sendMessage = () => {
     if (newMessage.trim()) {
-      socketRef.current.emit('sendMessage', { text: newMessage, roomId, userId: userIdRef.current });
-      setMessages(prevMessages => [...prevMessages, { text: newMessage, fromSelf: true }]);
+      const message = {
+        text: newMessage,
+        roomId,
+        userId: userIdRef.current,
+        userName: userName, // Include the sender's name
+      };
+      socketRef.current.emit('sendMessageMeeting', message);
+      setMessages((prevMessages) => [...prevMessages, { ...message, fromSelf: true }]);
       setNewMessage('');
     }
   };
+  
 
   const toggleAudio = () => {
     const audioTrack = localStreamRef.current?.getAudioTracks()[0];
@@ -183,30 +201,56 @@ const VideoCall = ({ userId }) => {
 
   return (
     <div className="flex h-screen w-full bg-gray-800 text-white relative">
+      {/* Video Section */}
       <div className="flex flex-1">
-        {/* Video Section */}
         <div className={`flex ${isChatOpen ? "w-2/3" : "w-full"} flex-col items-center justify-center`}>
           <div className="flex w-full h-full">
+            {/* Local Video */}
             <div className="w-1/2 relative">
-              <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover border border-white rounded-lg" />
-              <div className="absolute bottom-4 left-4 bg-black bg-opacity-50 text-white p-2 rounded">{userName}</div>
+              <video
+                ref={localVideoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-full object-cover border border-white rounded-lg"
+              />
+              <div className="absolute bottom-4 left-4 bg-black bg-opacity-50 text-white p-2 rounded">
+                {userName}
+              </div>
             </div>
+            {/* Remote Video */}
             <div className="w-1/2 relative">
-              <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover border border-white rounded-lg" />
+              <video
+                ref={remoteVideoRef}
+                autoPlay
+                playsInline
+                className="w-full h-full object-cover border border-white rounded-lg"
+              />
             </div>
           </div>
         </div>
-
+  
         {/* Chat Section */}
         {isChatOpen && (
           <div className="flex flex-col w-1/3 h-full bg-gray-900 border-l border-gray-700">
+            {/* Chat Messages */}
             <div className="flex-grow overflow-y-auto p-4">
               {messages.map((message, index) => (
-                <div key={index} className={`p-2 mb-2 rounded ${message.fromSelf ? 'bg-green-500 text-right' : 'bg-gray-700 text-left'}`}>
-                  {message.text}
+                <div
+                  key={index}
+                  className={`p-2 mb-2 rounded ${
+                    message.fromSelf ? 'bg-green-500 text-right' : 'bg-gray-700 text-left'
+                  }`}
+                >
+                  {!message.fromSelf && (
+                    <div className="text-xs text-gray-400">{message.userName}</div>
+                  )}
+                  <div>{message.text}</div>
                 </div>
               ))}
             </div>
+
+            {/* Chat Input */}
             <div className="p-4 flex items-center space-x-2 border-t border-gray-700">
               <input
                 type="text"
@@ -216,36 +260,70 @@ const VideoCall = ({ userId }) => {
                 placeholder="Type a message"
                 className="flex-1 p-2 rounded bg-gray-800 border border-gray-600 text-white"
               />
-              <button onClick={sendMessage} className="bg-blue-600 p-2 rounded-full hover:bg-blue-700">
+              <button
+                onClick={sendMessage}
+                className="bg-blue-600 p-2 rounded-full hover:bg-blue-700"
+              >
                 Send
               </button>
             </div>
           </div>
         )}
       </div>
-
+  
+      {/* Room Code Display */}
+      {showRoomCode && (
+        <div className="absolute bottom-4 left-4 bg-gray-700 text-white px-4 py-2 rounded shadow-lg">
+          Room Code: {roomId}
+          <button
+            onClick={copyRoomId}
+            className="ml-2 bg-blue-600 px-2 py-1 rounded hover:bg-blue-700 text-white"
+          >
+            Copy
+          </button>
+        </div>
+      )}
+  
       {/* Controls Section */}
       <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center space-x-4">
+        {/* Toggle Audio */}
         <button onClick={toggleAudio} className="bg-gray-600 p-3 rounded-full hover:bg-gray-700">
           {isAudioEnabled ? <FaMicrophone /> : <FaMicrophoneSlash />}
         </button>
+        {/* Toggle Video */}
         <button onClick={toggleVideo} className="bg-gray-600 p-3 rounded-full hover:bg-gray-700">
           {isVideoEnabled ? <FaVideo /> : <FaVideoSlash />}
         </button>
+        {/* Toggle Screen Share */}
         <button onClick={toggleScreenShare} className="bg-gray-600 p-3 rounded-full hover:bg-gray-700">
-      
-        
-        
+          <FaDesktop />
         </button>
+        {/* Toggle Chat */}
         <button onClick={() => setChatOpen(!isChatOpen)} className="bg-gray-600 p-3 rounded-full hover:bg-gray-700">
           <FaComments />
         </button>
+        {/* End Call */}
         <button onClick={endCall} className="bg-red-600 p-3 rounded-full hover:bg-red-700">
           <FaPhone />
         </button>
+        {/* Toggle Room Code */}
+        <button
+          onClick={() => setShowRoomCode(!showRoomCode)}
+          className="bg-gray-600 p-3 rounded-full hover:bg-gray-700"
+        >
+          {showRoomCode ? <FaTimesCircle /> : <FaClipboard />}
+        </button>
       </div>
+  
+      {/* Show copied message */}
+      {copied && (
+        <div className="absolute bottom-16 left-4 bg-green-600 text-white px-4 py-2 rounded shadow-lg">
+          Room code copied to clipboard!
+        </div>
+      )}
     </div>
   );
-};
+  
+};  
 
 export default VideoCall;

@@ -9,31 +9,22 @@ function RightSidebar({ selectedChat, socketServerURL }) {
   useEffect(() => {
     if (selectedChat) {
       const fetchChatMembers = async () => {
-        try {
-          const response = await fetch(
-            `${socketServerURL}/chatmembers/list?userId=${userId}`,
-            {
-              headers: {
-                Authorization: `Bearer ${localStorage.getItem('token')}`,
-              },
+        if (selectedChat?.id) {
+          try {
+            const response = await fetch(
+              `http://localhost:3009/api/chats/chatmembers?chatId=${selectedChat.id}`
+            );
+            if (!response.ok) {
+              throw new Error('Failed to fetch chat members');
             }
-          );
-
-          if (!response.ok) {
-            throw new Error('Failed to fetch chat members');
+            const data = await response.json();
+            setChatMembers(data);
+          } catch (error) {
+            console.error('Lỗi khi lấy danh sách thành viên:', error);
           }
-
-          const data = await response.json();
-          const currentChat = data.find((chat) => chat.id === selectedChat.id);
-
-          if (currentChat && currentChat.chatMembers) {
-            setChatMembers(currentChat.chatMembers);
-          }
-        } catch (error) {
-          console.error('Error fetching chat members:', error);
         }
       };
-
+  
       fetchChatMembers();
     }
   }, [selectedChat, socketServerURL, userId]);
@@ -65,20 +56,18 @@ function RightSidebar({ selectedChat, socketServerURL }) {
               Participants
             </h4>
             <ul>
-              {chatMembers
-                .filter((member) => member.userId !== userId) // Lọc người dùng hiện tại
-                .map((member) => (
-                  <li key={member.userId} className="flex items-center mb-2">
-                    <Avatar className="w-8 h-8 mr-2 shadow-md">
-                      <AvatarImage
-                        src={`/placeholder.svg?height=40&width=40`}
-                        alt={member.username}
-                      />
-                      <AvatarFallback>{member.username?.charAt(0) || '?'}</AvatarFallback>
-                    </Avatar>
-                    <span className="dark:text-white">{member.username}</span>
-                  </li>
-                ))}
+              {chatMembers.map((member) => (
+                <li key={member.id} className="flex items-center mb-2">
+                  <Avatar className="w-8 h-8 mr-2 shadow-md">
+                    <AvatarImage
+                      src={`/placeholder.svg?height=40&width=40`}
+                      alt={member.user.username}
+                    />
+                    <AvatarFallback>{member.user.username?.charAt(0) || '?'}</AvatarFallback>
+                  </Avatar>
+                  <span className="dark:text-white">{member.user.username}</span>
+                </li>
+              ))}
             </ul>
           </div>
         </TabsContent>
