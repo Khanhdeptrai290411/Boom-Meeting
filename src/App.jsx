@@ -24,7 +24,7 @@ import VideoCall from './pages/Call/VideoCall';
 import MeetingRoom from './pages/Meeting/MeetingRoom';
 import MeetingPage from './pages/Meeting/MeetingPage';
 import ReactLogo from './assets/ok.jpg'; // Đảm bảo đường dẫn chính xác
-import ProfilePage from './pages/Documents/ProfilePage';
+import ProfilePage from './pages/Profile/ProfilePage';
 import Auth from './pages/Login/Auth';
 import io from 'socket.io-client'; // Import socket.io-client
 
@@ -51,6 +51,7 @@ export default function MessengerInterface() {
     setIsAuthenticated(true); // Cập nhật trạng thái xác thực
     // Không cần kết nối socket ở đây nữa, việc kết nối sẽ do useEffect đảm nhiệm
   };
+  
   useEffect(() => {
     const token = localStorage.getItem('token');
     const user = JSON.parse(localStorage.getItem('user'));
@@ -337,7 +338,6 @@ const handleAccept = async (id) => {
 };
 
   
-  
   // Lắng nghe sự kiện Socket.IO từ server để cập nhật UI ngay lập tức khi yêu cầu kết bạn được chấp nhận
   useEffect(() => {
     if (!socket) return;
@@ -359,6 +359,10 @@ const handleAccept = async (id) => {
       socket.off('friendRequestAccepted');
     };
   }, [socket]);
+
+
+  
+  
   
   
   
@@ -580,8 +584,53 @@ const [searchQuery, setSearchQuery] = useState('');
 
 //GỬi LMKB
 
+useEffect(() => {
+  if (!socket) return;
 
-    
+  socket.on('userUpdated', (updatedUser) => {
+    console.log('User information updated:', updatedUser);
+
+    // Cập nhật thông tin người dùng trong localStorage
+    const currentUser = JSON.parse(localStorage.getItem('user'));
+    if (currentUser && currentUser.id == updatedUser.id) {
+      localStorage.setItem(
+        'user',
+        JSON.stringify({
+          ...currentUser,
+          username: updatedUser.username,
+          email: updatedUser.email,
+        })
+      );
+    }
+    console.log('All Users Before Update:', allUsers);
+    // Cập nhật React state
+    setAllUsers((prevUsers) => {
+      const updatedUsers = prevUsers.map((user) =>
+        user.id == updatedUser.id ? { ...user, ...updatedUser } : user
+      );
+  
+      console.log('All Users After Update:', updatedUsers);
+      return updatedUsers;
+    });
+
+    console.log('Friends Before Update:', friends);
+
+    setFriends((prevFriends) => {
+      const updatedFriends = prevFriends.map((friend) =>
+        friend.id == updatedUser.id ? { ...friend, ...updatedUser } : friend
+      );
+
+      console.log('Friends After Update:', updatedFriends);
+      return updatedFriends;
+    });
+  });
+
+  return () => {
+    socket.off('userUpdated');
+  };
+}, [socket]);
+  
+
 
 
 const renderTabContent = () => {
@@ -685,7 +734,12 @@ const renderTabContent = () => {
         );
         return (
           <div className="overflow-y-auto flex-1">
-            {filteredFriends.map((friend) => (
+            {filteredFriends.length === 0 ? (
+            <p className="text-center text-gray-500 dark:text-gray-400">
+              No friends found.
+            </p>
+          ) : (
+            filteredFriends.map((friend) => (
               <div
                 key={friend.id}
                 className={`flex items-center p-4 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-800 cursor-pointer transition-all ${
@@ -706,7 +760,7 @@ const renderTabContent = () => {
                   </div>
                 </div>
               </div>
-            ))}
+            )))}
           </div>
         );
       
@@ -785,8 +839,13 @@ const renderTabContent = () => {
                 toggleMenuSidebar={toggleMenuSidebar}
                 isDarkMode={isDarkMode}
                 toggleDarkMode={toggleDarkMode}
-
-                setSelectedChat={setSelectedChat}
+                socket={socket} // Truyền socket xuống ChatLayout
+                socketServerURL={socketServerURL}
+                user={{
+                  id: userId,
+                  username: userName,
+                  email: user?.email,
+                }}
               />
             ) : (
               <Navigate to="/" replace /> // Chuyển hướng đến trang đăng nhập nếu chưa đăng nhập

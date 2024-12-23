@@ -1,22 +1,39 @@
 import React, { useState } from 'react';
-
-function ChangePassword() {
+import { io } from 'socket.io-client'; // Import Socket.IO client
+function ChangePassword({ userId, socketServerURL }) {
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
-  const [isPasswordCorrect, setIsPasswordCorrect] = useState(true);
 
-  const handlePasswordChange = () => {
-    if (oldPassword === "userOldPassword") { // Bạn cần kiểm tra mật khẩu cũ ở đây
-      setIsPasswordCorrect(true);
-      // Xử lý thay đổi mật khẩu mới
-      if (newPassword === confirmNewPassword) {
-        console.log("Mật khẩu đã được thay đổi thành công");
-      } else {
-        console.log("Mật khẩu mới và xác nhận mật khẩu không trùng khớp");
+  const handlePasswordChange = async () => {
+    if (newPassword !== confirmNewPassword) {
+      alert('Mật khẩu mới và xác nhận mật khẩu không trùng khớp.');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${socketServerURL}/api/users/${userId}/password`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({
+          oldPassword,
+          newPassword,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update password');
       }
-    } else {
-      setIsPasswordCorrect(false);
+      const socket = io(socketServerURL);
+      socket.emit('profileUpdated', { id: userId });
+
+      alert('Đổi mật khẩu thành công!');
+    } catch (error) {
+      console.error('Error updating password:', error);
+      alert('Không thể đổi mật khẩu. Vui lòng thử lại.');
     }
   };
 
@@ -25,10 +42,6 @@ function ChangePassword() {
       <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">
         Đổi mật khẩu
       </h2>
-
-      {!isPasswordCorrect && (
-        <p className="text-red-500 mb-4">Mật khẩu cũ không chính xác.</p>
-      )}
 
       <div className="mb-4">
         <label className="block text-gray-700 dark:text-gray-200 mb-2">Mật khẩu cũ</label>
