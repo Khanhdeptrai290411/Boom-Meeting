@@ -150,35 +150,62 @@ const VideoCall = ({ userId }) => {
   const toggleScreenShare = async () => {
     if (!isScreenSharing) {
       try {
-        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        // Lấy danh sách nguồn màn hình từ Electron
+        const sources = await window.electronAPI.getSources({ types: ['window', 'screen'] });
   
-        // Kiểm tra nếu screenStream là MediaStream
-        if (screenStream instanceof MediaStream) {
-          const screenTrack = screenStream.getVideoTracks()[0];
-  
-          const sender = peerConnectionRef.current.getSenders().find(s => s.track.kind === 'video');
-          if (sender) {
-            sender.replaceTrack(screenTrack);
-          }
-  
-          localVideoRef.current.srcObject = screenStream; // Hiển thị màn hình chia sẻ
-  
-          // Dừng chia sẻ màn hình khi người dùng dừng screenTrack
-          screenTrack.onended = () => {
-            stopScreenShare();
-          };
-  
-          setIsScreenSharing(true);
-        } else {
-          console.warn("No valid MediaStream found for screen sharing.");
+        // Kiểm tra nếu không có nguồn nào được trả về
+        if (!sources || sources.length === 0) {
+          console.error('No screen sources available');
+          alert('Không tìm thấy nguồn màn hình để chia sẻ.');
+          return;
         }
+  
+        // Hiển thị danh sách các nguồn và chọn một nguồn (giả định chọn nguồn đầu tiên)
+        const source = sources[0]; // Bạn có thể tạo UI để người dùng chọn nguồn
+  
+        // Tạo stream từ nguồn đã chọn
+        const screenStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            mandatory: {
+              chromeMediaSource: 'desktop',
+              chromeMediaSourceId: source.id,
+            },
+          },
+          audio: false, // Bỏ qua audio vì không cần thiết cho màn hình
+        });
+  
+        // Lấy video track từ stream màn hình
+        const screenTrack = screenStream.getVideoTracks()[0];
+  
+        // Tìm sender video hiện tại và thay thế track
+        const sender = peerConnectionRef.current
+          .getSenders()
+          .find((s) => s.track.kind === 'video');
+        if (sender) {
+          sender.replaceTrack(screenTrack);
+        }
+  
+        // Hiển thị màn hình chia sẻ trong local video
+        localVideoRef.current.srcObject = screenStream;
+  
+        // Xử lý khi người dùng dừng chia sẻ màn hình
+        screenTrack.onended = () => {
+          console.log('Screen sharing stopped');
+          stopScreenShare();
+        };
+  
+        setIsScreenSharing(true);
+        console.log('Screen sharing started');
       } catch (error) {
-        console.error("Error sharing screen:", error);
+        console.error('Error sharing screen:', error);
+        alert('Không thể chia sẻ màn hình. Vui lòng kiểm tra cài đặt và thử lại.');
       }
     } else {
       stopScreenShare();
     }
   };
+  
+  
   const stopScreenShare= async ()=>{
     const videoTrack=localStreamRef.current.getVideoTracks()[0];
     const sender=peerConnectionRef.current.getSenders().find(s=>s.track.kind==='video');
@@ -204,7 +231,7 @@ const VideoCall = ({ userId }) => {
       {/* Video Section */}
       <div className="flex flex-1">
         <div className={`flex ${isChatOpen ? "w-2/3" : "w-full"} flex-col items-center justify-center`}>
-          <div className="flex w-full h-full">
+          <div className="flex w-full h-full justify-center items-center gap-4">
             {/* Local Video */}
             <div className="w-1/2 relative">
               <video
